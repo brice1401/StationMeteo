@@ -1,0 +1,13 @@
+**** TO DO-LIST ****
+
+** General :
+-Reduce the number of variables and their sizes to decrease the use of RAM
+
+
+
+** On the code :
+-find a good solution to manage the display :
+	the display have to be switch of 5s sec after the last press on button
+	possibility to use the RTC : Real Time Clock to have the number of second since January 1st, 1970 (unsigned long)
+
+-Transfer the change on TestLCD to ReceiverDispalyCard.ino
