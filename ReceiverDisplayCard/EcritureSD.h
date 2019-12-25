@@ -14,6 +14,8 @@ String getDateJM();
 String getHoraire();
 String getHoraireHM();
 
+unsigned long getUnix();
+
 
 void DecodeReception(char Message[], char DataTraitee[], int lengthData);
 

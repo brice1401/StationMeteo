@@ -73,6 +73,11 @@ String getHoraireHM(){
   return(Horaire);
 }
 
+unsigned long getUnix(){
+  unsigned long UnixTime = now.unixtime();
+  return(UnixTime);
+}
+
 float Moyenne(float Liste[], int Length){
   // Calcul la moyenne de la liste
   int sum;
@@ -103,4 +108,3 @@ void RTCinit(){
 	}
 
 }
-

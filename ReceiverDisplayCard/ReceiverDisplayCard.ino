@@ -68,8 +68,7 @@ const int PinButtonReset = A3;
 const int PinLedFond = A1; //pour selection la valeur du retroeclairage
 
 //Temps d'affichage des valeurs sur l'écran
-const int TimeAffichageMax = 5; //temps d'affichage max en seconde
-int TimeAffichageCourant = 0;
+const int TimeAffichageMax = 10; //temps d'affichage max en seconde
 unsigned long debutAffichage = 0;
 
 int NumEcran = 0;
@@ -83,6 +82,7 @@ int LastPositionReset;
 int LastPositionChange;
 unsigned long LastdebounceTime = 0;  // the last time the output pin was toggled
 unsigned int debounceDelay = 200;    // the debounce time; increase if the output flickers
+unsigned long LastdebounceTimeChange;
 
 //Initilisation de l'ecran LCD
 LiquidCrystal lcd(PinRS, PinEnable, PinD4, PinD5, PinD6, PinD7);
@@ -286,18 +286,19 @@ void loop() {
   //On regarde si il y a eu un changement d'état du bouton change
   PositionChange = PositionButton(analogRead(PinChangeEcran));
   if(PositionChange != LastPositionChange){
-    LastdebounceTime = millis();
+    LastdebounceTimeChange = millis();
     }
-  if((millis() - LastdebounceTime) > debounceDelay){
-    if((LastPositionChange == LOW) && (PositionChange != LastPositionChange)){
+  if((millis() - LastdebounceTimeChange) > debounceDelay){
+    if((LastPositionChange == 1)){
       NumEcran = (NumEcran + 1) % 4;
       Affichage = true;
-      debutAffichage = millis(); //Reinitialise le timer d'affichage
-      LastPositionChange = PositionChange;
+      LastdebounceTimeChange = millis();
+      debutAffichage = getUnix(); //Reinitialise le timer d'affichage
     }
-
   }
-  if((millis() - debutAffichage) < TimeAffichageMax){
+  LastPositionChange = PositionChange;
+  
+  if((debutAffichage + TimeAffichageMax) < getUnix()){
     //regarde depuis combien de temps c'est affiche, on coupe si trop longptemps
     Affichage = true;
   }
@@ -313,13 +314,13 @@ void loop() {
     LastdebounceTime = millis();
   }
   if((millis() - LastdebounceTime) > debounceDelay){
-    if((PositionReset != LastPositionReset) && (LastPositionReset = LOW)){
+    if(PositionReset == 1){
       VolumeEauReset = 0;
       DateReset = getDateJM();
       HoraireReset = getHoraireHM();
-      LastPositionReset = PositionReset;
     }
   }
+  LastPositionReset = PositionReset;
 
   //Pour gérer l'enregistrement
   if(Minute % TempsSauvegarde == 0){

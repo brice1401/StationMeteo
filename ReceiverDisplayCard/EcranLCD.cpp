@@ -1,7 +1,7 @@
 /*
  * EcranLCD.cpp
  *
- *  Created on: 19 déc. 2019
+ *  Created on: 19 dï¿½c. 2019
  *      Author: brice
  */
 
@@ -10,15 +10,15 @@
 int PositionButton(int EntreeAnalog){
 	// si bouton appuie : 1
 	// si bouton relache : 0
-	//On fait un changement de boutton que lorsque l'on passe de 1 à 0
+	//On fait un changement de boutton que lorsque l'on passe de 1 ï¿½ 0
 
 	int PositionButton;
 
-	if(EntreeAnalog > 500){
-		PositionButton = HIGH;
+	if(EntreeAnalog > 1000){
+		PositionButton = 1;
 	}
 	else{
-		PositionButton = LOW;
+		PositionButton = 0;
 	}
 	return(PositionButton);
 }
