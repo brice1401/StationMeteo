@@ -3,7 +3,7 @@
 
 
 //Pin pour l'écran LCD
-const int PinRS = 2;
+const int PinRS = 8;
 const int PinEnable = 3;
 const int PinD4 = 4;
 const int PinD5 = 5;
@@ -51,7 +51,7 @@ int PositionButton(int EntreeAnalog){
 
   int PositionButton;
 
-  if(EntreeAnalog > 1000){
+  if(EntreeAnalog > 900){
     PositionButton = 1;
   }
   else{
@@ -121,7 +121,7 @@ void loop(){
   if(PositionChange != LastPositionChange){
     LastdebounceTimeChange = millis();
     }
-
+  Serial.println(PositionChange);
   if(((millis() - LastdebounceTimeChange) > debounceDelay) && (true)){
     if(PositionChange == 1){
       Serial.println("sdbfzfjbqldivqldbkvjqldijvbcqiusiducbqisducv");
@@ -129,20 +129,42 @@ void loop(){
       Affichage = true;
       LastdebounceTimeChange = millis();
       debutAffichage = long(millis()/1000); //Reinitialise le timer d'affichage
+  
+      //Si on affiche les données ou pas
+      //On va chercher les donnees pour remplir le vecteur DataAffichage
+  
+      DataAffichage[0] = 42;
+      DataAffichage[1] = 26;
+      DataAffichage[2] = 30;
+      DataAffichage[3] = 5;
+  
+      //Initialisation des lignes à afficher
+      SelectionDonneeAffichage(NumEcran, DataAffichage);
+  
+      lcd.display();
+      lcd.setCursor(0, 0);
+      lcd.println("                "); //efface les caractère en memoire
+      lcd.setCursor(0, 0);
+      lcd.println(MessageLCD0);
+      lcd.setCursor(0, 1);
+      lcd.println("                ");
+      lcd.setCursor(0, 1);
+      lcd.println(MessageLCD1);
+      analogWrite (PinLedFond, 128);
     }
   }
   LastPositionChange = PositionChange;
 
 
   TimeAffichageCourant = long(millis()/1000) - debutAffichage;
-  Serial.println(TimeAffichageCourant);
   if(TimeAffichageCourant < TimeAffichageMax){
     //regarde depuis combien de temps c'est affiche, on coupe si trop longptemps
     Affichage = true;
-    Serial.println(Affichage);
   }
   else{
     Affichage = false;
+    lcd.noDisplay();
+    analogWrite (PinLedFond, 0);
   }
 
 
@@ -158,35 +180,5 @@ void loop(){
     }
   }
   LastPositionReset = PositionReset;
-
-  if(Affichage){
-    //Si on affiche les données ou pas
-    //On va chercher les donnees pour remplir le vecteur DataAffichage
-
-    DataAffichage[0] = 42;
-    DataAffichage[1] = 26;
-    DataAffichage[2] = 30;
-    DataAffichage[3] = 5;
-
-    //Initialisation des lignes à afficher
-    SelectionDonneeAffichage(NumEcran, DataAffichage);
-
-    lcd.display();
-    lcd.setCursor(0, 0);
-    lcd.println("                "); //efface les caractère en memoire
-    lcd.setCursor(0, 0);
-    lcd.println(MessageLCD0);
-    lcd.setCursor(0, 1);
-    lcd.println("                ");
-    lcd.setCursor(0, 1);
-    lcd.println(MessageLCD1);
-    analogWrite (PinLedFond, 255);
-    analogWrite (PinLedFond, 128);
-
-    }
-    else{
-      lcd.noDisplay();
-      analogWrite (PinLedFond, 0);
-    }
 
 }

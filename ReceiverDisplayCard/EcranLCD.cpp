@@ -31,7 +31,7 @@ int DirectionVentCardinaux(int Mesure){
 	int IndiceListe = 0;
 
 	for(int i=0; i < NbreDirection; i++){
-		if((Mesure >= ValeurDirectionBit[i] - 20) && (Mesure < ValeurDirectionBit[i] + 20)){
+		if((Mesure >= (ValeurDirectionBit[i] - 20)) && (Mesure < (ValeurDirectionBit[i] + 20))){
 			IndiceListe = i;
 		}
 	}

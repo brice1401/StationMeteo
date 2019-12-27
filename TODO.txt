@@ -21,4 +21,13 @@
 
 -Transfer the change on TestLCD to ReceiverDispalyCard.ino
 
+-Add a temporisation for the wind speed, for exemple (f<XX Hz) to avoid impossible speed
+
+-Change Pin of temp to 7
+
+
+
+
+** Far away future **
+-Add a solar panel and a Li-ion batery
 

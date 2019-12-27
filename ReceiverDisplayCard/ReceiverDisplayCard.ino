@@ -22,12 +22,11 @@ char DataTraitee[61];
 int NbrePluie;
 String DateReset;
 String HoraireReset;
-float ConversionPluie = 0.2794; //mm de pluie par interruption
 float VolumeEauCourant = 0;
 float VolumeEauReset = 0;
 int DelayComptage = 250; // delay entre 2 comptages sur l'interrupteur
 float DataAffichage[] = {0, 0, 0, 0};
-char DirectionCardinal[16][3] = {"N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","WSW","WNW","NW","NNW"};
+char DirectionCardinal[][2] = {"N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"};
 
 
 String NomFichier = "DataMeteo.txt";
@@ -35,32 +34,26 @@ String NomFichier = "DataMeteo.txt";
 //Constante pour l'enregistrement et demande des données
 const int TempsReception = 3; //en minutes
 const int TempsSauvegarde = 15; //en minutes
-String DateSauv;
-String HoraireSauv;
 float DataSauv[4];
 
 
 //Definition des Pins
 
 // Pin pour le bus SPI de la radio et de la carte SD
-const int PinSCK = 13;
-const int PinMISO = 12;
-const int PinMOSI = 11;
+/* Pin for the radio communication
+ * const int PinSCK = 13;
+ * const int PinMISO = 12;
+ * const int PinMOSI = 11;
+ * const int PinDI00 = 2;
+*/
+//Pin slave du protocole SPI
 const int PinNSSSD = 10; //CS de la carte SD
 const int PinNSSRadio = 9; //CS de la radio
-const int PinDI00 = 8;
 
-//Pin pour la communication I2C avec le RTC
-const int PinSDAClock = A4;
-const int PinSCLClock = A5;
 
-//Pin pour l'écran LCD
-const int PinRS = 2;
-const int PinEnable = 3;
-const int PinD4 = 4;
-const int PinD5 = 5;
-const int PinD6 = 6;
-const int PinD7 = 7;
+//Initilisation de l'ecran LCD
+// Ordre : (PinRS, PinEnable, PinD4, PinD5, PinD6, PinD7);
+LiquidCrystal lcd(8, 3, 4, 5, 6, 7);
 
 // Variables et pins pour l'affichage
 const int PinChangeEcran = A2;
@@ -72,7 +65,6 @@ const int TimeAffichageMax = 10; //temps d'affichage max en seconde
 unsigned long debutAffichage = 0;
 
 int NumEcran = 0;
-bool Affichage;
 String MessageLCD0;
 String MessageLCD1;
 
@@ -83,10 +75,6 @@ int LastPositionChange;
 unsigned long LastdebounceTime = 0;  // the last time the output pin was toggled
 unsigned int debounceDelay = 200;    // the debounce time; increase if the output flickers
 unsigned long LastdebounceTimeChange;
-
-//Initilisation de l'ecran LCD
-LiquidCrystal lcd(PinRS, PinEnable, PinD4, PinD5, PinD6, PinD7);
-
 
 //Paramètres du modules radio
 #define NETWORKID     208   // Must be the same for all nodes (0 to 255)
@@ -118,16 +106,12 @@ void setup() {
 
   if (!SD.begin(PinNSSSD))
   {
-    Serial.println("Card Failure");
-    return;
+    Serial.println("Card Failure, or not present");
+    // don't do anything more:
+    while (1);
   }
-  Serial.println("Card Ready");
+  Serial.println("card initialized.");
 
-  //Creation du fichier si il n'existe pas
-  //A FAIRE
-
-  //Set up of rtc
-  RTCinit();
 
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
@@ -141,12 +125,11 @@ void setup() {
   DateReset = getDateJM();
   HoraireReset = getHoraireHM();
 
-  Affichage = false; //est ce que l'on affiche
   NumEcran = 0; //quelle ecran afficher
 
   //Initialisation de la communication radio
 
-  radio.setCS (9); //changement de pin Slave pour la carte radio
+  radio.setCS (PinNSSRadio); //changement de pin Slave pour la carte radio
   radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
   radio.setHighPower(); // Always use this for RFM69HCW
   // Turn on encryption if desired:
@@ -229,8 +212,8 @@ void Decodage(){
 
   //On modifie les variables numerique du reste du code
 
-  VolumeEauCourant = ConversionPluie * ReceptionPluie.toFloat();
-  VolumeEauReset = ConversionPluie * ReceptionPluie.toFloat();
+  VolumeEauCourant = 0.2794 * ReceptionPluie.toFloat();
+  VolumeEauReset = 0.2794 * ReceptionPluie.toFloat();
 
   ListTemp[IndiceCourantEnregistrement] = ReceptionTemp.toFloat();
   ListeVitesse[IndiceCourantEnregistrement] = ReceptionForceVent.toFloat();
@@ -243,14 +226,11 @@ void Decodage(){
 void loop() {
   // put your main code here, to run repeatedly:
   // Prise en compte de l'horaire
-  String Date = getDate();
-  String Horaire = getHoraireHM();
-  int Minute = getMinute();
 
   //Onfait une demande des données toutes les 3 minutes
-  if ((Minute%3) == 0){
+  if ((getMinute() % TempsReception) == 0){
     //Envoie d'un message pour enclencher la reception des données
-    char MessageInit = 'COUCOU';
+    char MessageInit[] = "COUCOU";
     char LengthMessageInit = sizeof(MessageInit);
     if (radio.sendWithRetry(TONODEID, MessageInit, LengthMessageInit)){
     Serial.println("ACK received!");
@@ -291,19 +271,38 @@ void loop() {
   if((millis() - LastdebounceTimeChange) > debounceDelay){
     if((LastPositionChange == 1)){
       NumEcran = (NumEcran + 1) % 4;
-      Affichage = true;
       LastdebounceTimeChange = millis();
       debutAffichage = getUnix(); //Reinitialise le timer d'affichage
+
+      //It is possible to display the informations
+
+      DataAffichage[0] = VolumeEauReset;
+      DataAffichage[1] = Moyenne(ListeDirection, NbreRecepSauv);
+      DataAffichage[2] = Moyenne(ListeVitesse, NbreRecepSauv);
+      DataAffichage[3] = Moyenne(ListTemp, NbreRecepSauv);
+
+      //Init of display string
+      SelectionDonneeAffichage(NumEcran, DataAffichage);
+
+      lcd.display();
+      lcd.setCursor(0, 0);
+      lcd.print("                "); //efface les caractère en memoire
+      lcd.setCursor(0, 0);
+      lcd.print(MessageLCD0);
+      lcd.setCursor(0, 1);
+      lcd.print("                ");
+      lcd.setCursor(0, 0);
+      lcd.print(MessageLCD1);
+      analogWrite (PinLedFond, 255); //retroeclairage à fond
+      
     }
   }
   LastPositionChange = PositionChange;
   
-  if((debutAffichage + TimeAffichageMax) < getUnix()){
+  if((getUnix() - debutAffichage) > TimeAffichageMax){
     //regarde depuis combien de temps c'est affiche, on coupe si trop longptemps
-    Affichage = true;
-  }
-  else{
-    Affichage = false;
+    lcd.noDisplay();
+    analogWrite (PinLedFond, 0); //couper le retroeclairage
   }
 
 
@@ -323,10 +322,8 @@ void loop() {
   LastPositionReset = PositionReset;
 
   //Pour gérer l'enregistrement
-  if(Minute % TempsSauvegarde == 0){
+  if(getMinute() % TempsSauvegarde == 0){
     // On enregistreles donnéees sur la carte SD
-    DateSauv = getDate();
-    HoraireSauv = getHoraireHM();
     String ArrayNom[4] = {"Pluie;", "Direction Vent;", "Force Vent;", "Temperature;"};
 
     //Ouverture du fichier
@@ -334,7 +331,7 @@ void loop() {
     if (dataFile) {
       //On peut ouvrir le fichier
       for(int i = 0; i < 4; i++){
-        String LigneCSV = ArrayNom[i] + DateSauv + ";" + HoraireSauv + ";" + String(DataSauv[i]);
+        String LigneCSV = ArrayNom[i] + getDate() + ";" + getHoraireHM() + ";" + String(DataSauv[i]);
         dataFile.println(LigneCSV);
       }
       dataFile.close(); //fermeture du fichier
@@ -343,32 +340,4 @@ void loop() {
       Serial.println("Couldn't open log file");
     }
   }
-  if(Affichage){
-      //Si on affiche les données ou pas
-      //On va chercher les donnees pour remplir le vecteur DataAffichage
-
-      DataAffichage[0] = VolumeEauReset;
-      DataAffichage[1] = Moyenne(ListeDirection, NbreRecepSauv);
-      DataAffichage[2] = Moyenne(ListeVitesse, NbreRecepSauv);
-      DataAffichage[3] = Moyenne(ListTemp, NbreRecepSauv);
-
-      //Initialisation des lignes à afficher
-      SelectionDonneeAffichage(NumEcran, DataAffichage);
-
-      lcd.display();
-      lcd.setCursor(0, 0);
-      lcd.print("                "); //efface les caractère en memoire
-      lcd.setCursor(0, 0);
-      lcd.print(MessageLCD0);
-      lcd.setCursor(0, 1);
-      lcd.print("                ");
-      lcd.setCursor(0, 0);
-      lcd.print(MessageLCD1);
-      analogWrite (PinLedFond, 255); //retroeclairage à fond
-
-    }
-    else{
-      lcd.noDisplay();
-       analogWrite (PinLedFond, 0); //couper le retroeclairage
-    }
 }

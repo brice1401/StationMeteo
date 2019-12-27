@@ -74,6 +74,7 @@ String getHoraireHM(){
 }
 
 unsigned long getUnix(){
+  DateTime now = RTC.now();
   unsigned long UnixTime = now.unixtime();
   return(UnixTime);
 }
