@@ -199,7 +199,7 @@ void Encodage(float RainGauge, float WindDirection, float WindSpeed, float Temp)
   //Data[1] : direction Vent (°)
   //Data[2] : Vitesse Vent (km/h)
   //Data[3] : Temperature (°C)
-  // future :
+  // futur :
   //Data[4] : Atmospheric pressure (Pa)
   //Data[5] : Humidity (%)
   //Data[6] : battery

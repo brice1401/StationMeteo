@@ -16,6 +16,7 @@
 
 -Transfer the change on TestLCD to ReceiverDispalyCard.ino
 
+-avoid problem with negative temperature with the making of the radio message and the reading of it.
 
 
 
