@@ -26,7 +26,7 @@ float VolumeEauCourant = 0;
 float VolumeEauReset = 0;
 int DelayComptage = 250; // delay entre 2 comptages sur l'interrupteur
 float DataAffichage[] = {0, 0, 0, 0};
-char DirectionCardinal[][2] = {"N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"};
+char DirectionCardinal[][4] = {"N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"};
 
 
 String NomFichier = "DataMeteo.txt";
