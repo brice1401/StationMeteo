@@ -6,11 +6,6 @@
 
 
 ** On the code :
--find a good solution to manage the display :
-	the display have to be switch of 5s sec after the last press on button
-	possibility to use the RTC : Real Time Clock to have the number of second since January 1st, 1970 (unsigned long)
-	-> Use of the UnixTime
-
 -Change the time of save on SD and to transmitt data :
 	for the moment, look at the minute and do the action, but the code will the the action N² times during the minute
 
@@ -21,13 +16,11 @@
 
 -Transfer the change on TestLCD to ReceiverDispalyCard.ino
 
--Add a temporisation for the wind speed, for exemple (f<XX Hz) to avoid impossible speed
-
--Change Pin of temp to 7
 
 
 
 
 ** Far away future **
 -Add a solar panel and a Li-ion batery
+-Add more sensor
 
