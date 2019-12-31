@@ -54,22 +54,20 @@ String getDateJM() {
   return(Date);
 }
 
-String getHoraire(){
+
+String getDate() {
   DateTime now = RTC.now();
-  int Heure = now.hour();
-  int Minute = now.minute();
-  int Seconde = now.second();
-  String Horaire = String(Heure) + ":" + String(Minute) + ":" + String(Seconde);
-
-  return(Horaire);
+  int Year = now.year();
+  int Month = now.month();
+  int Day = now.day();
+  String Date = String(Day) + '/' + String(Month) + '/' + String(Year);
+  return(Date);
 }
-
 String getHoraireHM(){
   DateTime now = RTC.now();
-  int Heure = now.hour();
+  int Hour = now.hour();
   int Minute = now.minute();
-  String Horaire = String(Heure) + ":" + String(Minute);
-
+  String Horaire = String(Hour) + ":" + String(Minute);
   return(Horaire);
 }
 

@@ -208,8 +208,8 @@ void Encodage(float RainGauge, float WindDirection, float WindSpeed, float Temp)
   int WindDirectionInt = round(WindDirection*10);
   int WindSpeedInt = round(WindSpeed*10);
   int TempInt = round(Temp*10);
-  MessageData = MessageData + "RAIN" + String(RainGaugeInt);
-  MessageData = MessageData + "SENS" + String(WindDirectionInt);
-  MessageData = MessageData + "SPEED" + String(WindSpeedInt);
-  MessageData = MessageData + "TEMP" + String(TempInt);
+  MessageData = MessageData + "RAINZ" + String(RainGaugeInt);
+  MessageData = MessageData + "SENSZ" + String(WindDirectionInt);
+  MessageData = MessageData + "SPEEDZ" + String(WindSpeedInt);
+  MessageData = MessageData + "TEMPZ" + String(TempInt);
 }

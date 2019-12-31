@@ -18,6 +18,10 @@
 
 -avoid problem with negative temperature with the making of the radio message and the reading of it.
 
+-Add sd write
+
+-add timer to send message, save data
+
 
 
 
