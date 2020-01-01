@@ -204,10 +204,10 @@ void Encodage(float RainGauge, float WindDirection, float WindSpeed, float Temp)
   //Data[5] : Humidity (%)
   //Data[6] : battery
 
-  int RainGaugeInt = round(RainGauge*10);
-  int WindDirectionInt = round(WindDirection*10);
-  int WindSpeedInt = round(WindSpeed*10);
-  int TempInt = round(Temp*10);
+  int RainGaugeInt = round(RainGauge * 10);
+  int WindDirectionInt = round(WindDirection * 10);
+  int WindSpeedInt = round(WindSpeed * 10);
+  int TempInt = round((Temp + 40) * 10); //to have a positive integer
   MessageData = MessageData + "RAINZ" + String(RainGaugeInt);
   MessageData = MessageData + "SENSZ" + String(WindDirectionInt);
   MessageData = MessageData + "SPEEDZ" + String(WindSpeedInt);

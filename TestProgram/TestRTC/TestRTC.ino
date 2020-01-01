@@ -27,6 +27,22 @@ void setup () {
   }
 }
 
+String getDate() {
+  DateTime now = rtc.now();
+  int Year = now.year();
+  int Month = now.month();
+  int Day = now.day();
+  String Date = String(Day) + '/' + String(Month) + '/' + String(Year);
+  return(Date);
+}
+String getHoraireHM(){
+  DateTime now = rtc.now();
+  int Hour = now.hour();
+  int Minute = now.minute();
+  String Horaire = String(Hour) + ":" + String(Minute);
+  return(Horaire);
+}
+
 void loop () {
     DateTime now = rtc.now();
 
@@ -69,5 +85,9 @@ void loop () {
     Serial.println();
 
     Serial.println();
+
+    Serial.print("------------------------------");
+    Serial.println(getHoraireHM());
+    Serial.println(getDate());
     delay(3000);
 }

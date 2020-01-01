@@ -1,6 +1,5 @@
 #include "Arduino.h"
 #include <LiquidCrystal_I2C.h>
-#include <RFM69.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <SD.h>
@@ -8,14 +7,16 @@
 
 
 // To test the function :
-String MessageTest = "RAINZ42SENSZ3150SPEEDZ246TEMPZ181";
+String MessageTest = "RAINZ20SENSZ3375SPEEDZ313TEMPZ584";
 int LengthRadioMessage = MessageTest.length();
 bool AffichageTest = true;
+int counter = 0;
 
 // Variables and pins for display
 const int PinChangeEcran = A2;
 const int PinButtonReset = A3;
 bool Affichage;
+bool LastDisplay; //to avoid blinking
 String MessageLCD0; //message on upper line
 String MessageLCD1; //message on lower line
 int NumEcran;
@@ -43,17 +44,24 @@ String ReceivedMessage;
 const int NumberDataType = 4;
 int ReceivedData[NumberDataType]; //Data received by radio without change
 
-// To stock the Data before save
-const int NumberData = 20; //Number of data to store before save
-int RainGaugeData[NumberData];
-int WindSpeedData[NumberData];
-int WindDirectionData[NumberData];
-int TempData[NumberData];
+// To stock the Data before save, 20 elements = 1h
+const int NumberDataSave = 20; //Number of data to store before save
+int RainGaugeDataSave[NumberDataSave];
+int WindSpeedDataSave[NumberDataSave];
+int WindDirectionDataSave[NumberDataSave];
+int TempDataSave[NumberDataSave];
 int WritingIndex = 0;
+
+// To stock the data to display, 5 elements = 15min
+const int NumberDataDisplay = 5; //Number of data to store for the display
+float RainGaugeReset = 0; // Rain gauge since last reset
+int WindSpeedDataDisplay[NumberDataDisplay];
+int WindDirectionDataDisplay[NumberDataDisplay];
+int TempDataDisplay[NumberDataDisplay];
+int WritingIndexDisplay = 0; //to write data inside display array
 
 // Data for Display
 float DataAffichage[NumberDataType];
-float RainGaugeReset = 0; // Rain gauge since last reset
 
 // Information about time and date
 unsigned long UnixTime;
@@ -63,7 +71,15 @@ int SaveHour = 0; // hour of the last save
 int MinuteMessage = 0; // minute of the last message
 int MinuteBetweenMessage = 3; // number of minute between two message
 int HourBetweenSave = 1; // number of hour between 2 save
-RTC_DS1307 RTC;
+String DateScheduleReset; //date and schedule of the last reset
+unsigned long LastReset;
+const int TimeBetweenReset = 5; //number of second between two reset
+RTC_PCF8523 RTC;
+
+
+// Informations for the save on the SD card :
+String FileName = "DataMeteo.txt";
+const int PinCSSD = 10; //CS of the SD card reader
 
 
 int PositionButton(int EntreeAnalog){
@@ -72,13 +88,8 @@ int PositionButton(int EntreeAnalog){
 
   int PositionButton;
 
-  if(EntreeAnalog > 900){
-    PositionButton = 1;
-  }
-  else{
-    PositionButton = 0;
-  }
-  return(PositionButton);
+  if(EntreeAnalog > 900) return(1);
+  return(0);
 }
 
 void setup() {
@@ -86,6 +97,7 @@ void setup() {
   Serial.begin(9600);
   
   Affichage = false; //parametre d'affichage
+  LastDisplay = false;
   NumEcran = 0;
   lcd.begin();
 
@@ -98,12 +110,54 @@ void setup() {
   // use to init the RTC module
   Wire.begin();
   RTC.begin(); // load the time from your computer.
-  if (! RTC.isrunning())
+  if (! RTC.initialized())
   {
     Serial.println("RTC is NOT running!");
     // This will reflect the time that your sketch was compiled
     RTC.adjust(DateTime(__DATE__, __TIME__));
-  } 
+  }
+
+  //data on the reset
+  DateScheduleReset = getDate() + " " + getHoraireHM();
+  LastReset = RTC.now().unixtime();
+  
+  // To init the SD card reader
+  pinMode(PinCSSD, OUTPUT); //pin slave du lecteur sd
+
+  if (!SD.begin(PinCSSD))
+  {
+    Serial.println("Card Failure, or not present");
+    // don't do anything more:
+    while (1);
+  }
+  Serial.println("card initialized.");
+
+
+  // To init the radio
+  
+}
+
+String WindDirectionName(float WindAngle)
+{
+  //Function to return the name of the direction of the wind
+  //only 8 names, majority for the 4 cardinal points
+  String Direction;
+  if(WindAngle < 5) return("Nord");
+  if(WindAngle < 27,5) return("Nord");
+  if(WindAngle < 50) return("Nord-Est");
+  if(WindAngle < 72,5) return("Est");
+  if(WindAngle < 95) return("Est");
+  if(WindAngle < 117,5) return("Est");
+  if(WindAngle < 140) return("Sud-Est");
+  if(WindAngle < 162,5) return("Sud");
+  if(WindAngle < 185) return("Sud");
+  if(WindAngle < 207,5) return("Sud");
+  if(WindAngle < 230) return("Sud-Ouest");
+  if(WindAngle < 252,5) return("Ouest");
+  if(WindAngle < 275) return("Ouest");
+  if(WindAngle < 297,5) return("Ouest");
+  if(WindAngle < 320) return("Nord-Ouest");
+  if(WindAngle < 342,5) return("Nord");
 }
 
 void SelectionDonneeAffichage(int numero, float DataAffichage[]){
@@ -111,31 +165,23 @@ void SelectionDonneeAffichage(int numero, float DataAffichage[]){
 
   if(numero == 0){
     //on affiche le nombre de mm tombe
-    float VolumeEau = DataAffichage[numero];
-    MessageLCD0 = "Pluie :    |    ";
-    int PartieEnt = int(VolumeEau);
-    int PremiereDeci = (int(PartieEnt*10)-10*PartieEnt);
-    MessageLCD1 = String(PartieEnt) + "," + String(PremiereDeci);
+    MessageLCD0 = "Pluie : " + String(RainGaugeReset) + " mm";
+    MessageLCD1 = DateScheduleReset;
   }
   else if(numero == 1){
     //Affiche les données sur la direction du vent
-    MessageLCD0 = "Direction vent";
-
-    int IndiceVent = DataAffichage[numero];
-    String DirectionVentAffichage = "Nord Ouest      ";
-    MessageLCD1 = DirectionVentAffichage;
+    MessageLCD0 = "Direction vent : ";
+    MessageLCD1 = WindDirectionName(DataAffichage[1]);
   }
   else if(numero == 2){
     //Affiche les données sur la force du vent
-    MessageLCD0 = "Force vent-km/h";
-
-    float VitesseVentAffichage = DataAffichage[numero]*0.24;
-    MessageLCD1 = String(VitesseVentAffichage);
+    MessageLCD0 = "Vitesse du vent ";
+    MessageLCD1 = String(DataAffichage[2]) + " km/h      ";
     }
   else if(numero == 3){
     //Affiche les données sur la température
-    MessageLCD0 = "Pas de prise en ";
-    MessageLCD1 = "compte de la T  ";
+    MessageLCD0 = "Temperature :   ";
+    MessageLCD1 = String(DataAffichage[3]) + " degC      ";
     }
 }
 
@@ -202,16 +248,20 @@ void Decoding()
 
   // The message is translate, it's possible to add the data to the storing arrays
   // The values are still integer because there is a *10 factor
+  // The temperature has a +40°C to have positive integer
 
-  RainGaugeData[WritingIndex] = ReceivedRainGauge.toInt();
-  WindDirectionData[WritingIndex] = ReceivedWindDirection.toInt();
-  WindSpeedData[WritingIndex] = ReceivedWindSpeed.toInt();
-  TempData[WritingIndex] = ReceivedTemp.toInt();
-
+  // For the Saved Data
+  RainGaugeDataSave[WritingIndex] = ReceivedRainGauge.toInt();
+  WindDirectionDataSave[WritingIndex] = ReceivedWindDirection.toInt();
+  WindSpeedDataSave[WritingIndex] = ReceivedWindSpeed.toInt();
+  TempDataSave[WritingIndex] = ReceivedTemp.toInt();
+  WritingIndex = (WritingIndex + 1) % 20; //write on the next case of the array
+  //for the displayed data
   RainGaugeReset += float(ReceivedRainGauge.toInt())/10; // Add the amount of water
-  
-  
-  WritingIndex = (WritingIndex + 1) % 20;
+  WindDirectionDataDisplay[WritingIndexDisplay] = ReceivedWindDirection.toInt();
+  WindSpeedDataDisplay[WritingIndexDisplay] = ReceivedWindSpeed.toInt();
+  TempDataDisplay[WritingIndexDisplay] = ReceivedTemp.toInt();
+  WritingIndexDisplay = (WritingIndexDisplay + 1) % 5; //write on the next case of the array
 }
 
 void InitArray(int ArrayData[], int LengthData)
@@ -255,9 +305,9 @@ void loop(){
 
   // Update of display Data
   DataAffichage[0] = RainGaugeReset;
-  DataAffichage[1] = MeanArray(WindDirectionData, NumberData);
-  DataAffichage[2] = MeanArray(WindSpeedData, NumberData);
-  DataAffichage[3] = MeanArray(TempData, NumberData);
+  DataAffichage[1] = MeanArray(WindDirectionDataDisplay, NumberDataDisplay) / 10;
+  DataAffichage[2] = MeanArray(WindSpeedDataDisplay, NumberDataDisplay) / 10;
+  DataAffichage[3] = (MeanArray(TempDataDisplay, NumberDataDisplay) / 10) - 40;
 
   /* -----------------------------------------------------------------*/
   /* For the display */
@@ -270,55 +320,100 @@ void loop(){
     if(PositionChange == 1){
       NumEcran = (NumEcran + 1) % 4;
       Affichage = true;
+      LastDisplay = false; //to force the update of the display
       LastdebounceTimeChange = millis();
-      debutAffichage = long(millis()/1000); //Reinitialise le timer d'affichage
-  
-      //Si on affiche les données ou pas
-      //On va chercher les donnees pour remplir le vecteur DataAffichage
+      debutAffichage = long(millis()/1000); // reinit of the display timer
   
   
-      //Initialisation des lignes à afficher
-      SelectionDonneeAffichage(NumEcran, DataAffichage);
-
-      lcd.backlight();
-      lcd.display();
-      lcd.setCursor(0, 0);
-      lcd.println("                "); //erase caractere in memory
-      lcd.setCursor(0, 0);
-      lcd.println(MessageLCD0);
-      lcd.setCursor(0, 1);
-      lcd.println("                ");
-      lcd.setCursor(0, 1);
-      lcd.println(MessageLCD1);
-      
+      //Init the line to display
+      SelectionDonneeAffichage(NumEcran, DataAffichage); 
     }
   }
   LastPositionChange = PositionChange;
 
 
   TimeAffichageCourant = long(millis()/1000) - debutAffichage;
-  if(TimeAffichageCourant < TimeAffichageMax){
+  if(TimeAffichageCourant > TimeAffichageMax){
     //regarde depuis combien de temps c'est affiche, on coupe si trop longptemps
-    Affichage = true;
-  }
-  else{
     Affichage = false;
+  }
+
+  if(Affichage && !LastDisplay)
+  { //management of the display
+    lcd.backlight();
+    lcd.display();
+    lcd.setCursor(0, 0);
+    lcd.println("                "); //erase caractere in memory
+    lcd.setCursor(0, 0);
+    lcd.println(MessageLCD0);
+    lcd.setCursor(0, 1);
+    lcd.println("                ");
+    lcd.setCursor(0, 1);
+    lcd.println(MessageLCD1);
+  }
+  else if(LastDisplay && !Affichage)
+  {
     lcd.noDisplay();
     lcd.noBacklight();
   }
-
-
-  //To reset the data (red button)
+  LastDisplay = Affichage;
+  
+  /* To reset the data (red button) */
   //On regarde si il y a eu un changement d'état du bouton reset
   PositionReset = PositionButton(analogRead(PinButtonReset));
   if(PositionReset != LastPositionReset){
     LastdebounceTimeReset = millis();
   }
   if((millis() - LastdebounceTimeReset) > debounceDelay){
-    if(PositionReset == 1){
-      Serial.println("tous est remis à zéro \n");
+    if((PositionReset == 1) && ((UnixTime - LastReset) > TimeBetweenReset)){
+      RainGaugeReset = 0;
+      MessageLCD0 = "Compteur pluie  ";
+      MessageLCD1 = "remis a zero    ";
+      Affichage = true;
+      LastDisplay = false; //to force the update of the display
+      debutAffichage = long(millis()/1000); //Reinitialise le timer d'affichage
+      DateScheduleReset = getDate() + " " + getHoraireHM(); // the moment the person press the button
+      LastReset = UnixTime;
+      Serial.println("Reset");
     }
   }
   LastPositionReset = PositionReset;
 
+
+  /* To save the data on the SD card */
+  if(((SaveHour + HourBetweenSave) % 24) == CurrentHour)
+  {
+    // We save the data on the SD card
+    String ArrayNameData[NumberDataType] = {"Pluie;", "Direction Vent;", "Force Vent;", "Temperature;"};
+    
+    // Collection and mean of data before save :
+    float DataGroupSave[NumberDataType];
+    DataGroupSave[0] = float(SumArray(RainGaugeDataSave, NumberDataSave)) / 10;
+    DataGroupSave[1] = MeanArray(WindDirectionDataSave, NumberDataSave) / 10;
+    DataGroupSave[2] = MeanArray(WindSpeedDataSave, NumberDataSave) / 10;
+    DataGroupSave[3] = ((MeanArray(TempDataSave, NumberDataSave) / 10) - 40);
+    
+    // open the file
+    File dataFile = SD.open("Meteo.txt", FILE_WRITE);
+    if (dataFile) {
+      // the card had opened the file
+      for(int i = 0; i < 4; i++){
+        String LigneCSV = ArrayNameData[i] + getDate() + ";" + getHoraireHM() + ";" + String(DataGroupSave[i]);
+        Serial.println(LigneCSV);
+        dataFile.println(LigneCSV);
+      }
+      dataFile.close(); //fermeture du fichier
+    }
+    else {
+      Serial.println("Couldn't open log file");
+    }
+    
+  }
+  
+  counter++;
+  /* To test the fonction : */
+  if(AffichageTest && counter == 25)
+  {
+    
+  }
 }
