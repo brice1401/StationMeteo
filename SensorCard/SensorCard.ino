@@ -10,16 +10,10 @@
 #define NETWORKID     208   // Must be the same for all nodes (0 to 255)
 #define MYNODEID      1   // My node ID (0 to 255)
 #define TONODEID      0   // Destination node ID (0 to 254, 255 = broadcast)
-
-// RFM69 frequency, uncomment the frequency of your module:
-#define FREQUENCY   RF69_433MHZ
-
-// AES encryption (or not):
+#define FREQUENCY   RF69_433MHZ// RFM69 frequency
 #define ENCRYPT       false // Set to "true" to use encryption
 #define ENCRYPTKEY    "RADIOMETEOROBLOT" // Use the same 16-byte key on all nodes
-
-// Use ACKnowledge when sending messages (or not):
-#define USEACK        true // Request ACKs or not
+#define USEACK        true // Request ACKs or not (ACKnowledge)
 
 // Create a library object for our RFM69HCW module:
 RFM69 radio;

@@ -3,30 +3,27 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <RFM69.h>
-#include <RFM69registers.h>
-#include <RFM69_ATC.h>
-#include <RFM69_OTA.h>
 
 
-//Definition des variables
+//Variables
 float RainGauge = 0; //level of water fell, in mm
-float WindDirection; // entier de 0 a 360
+float WindDirection; // integer de 0 a 360
 float WindSpeed; //envoie la frequence de rotation de l'anenometre
-float Temp; // variable pour la température
+float Temp; // variable for temperature
 
-//Variable volatile pour les interrupt
+//Variable volatile for interrupt
 volatile long LastWindSpeed = 0;
 volatile unsigned int WindSpeedClick = 0;
 long LastWindCheck = 0;
 
-// Variables pour le comptage pluviométrique
+// Variables for rain gauge
 int LastButtonState = HIGH;
 unsigned long LastRain = 0;  // the last time the output pin was toggled
 
-// Variables pour l'envoie des données
-bool EnvoieData = false;
+// Variables for sending data
+bool SendData = false;
 String MessageData;
-int LenMessageData;
+//unsigned int LenMessageData;
 
 //Definition des Pins des capteurs
 
@@ -42,6 +39,18 @@ OneWire oneWire(PinTemp);
 DallasTemperature sensors(&oneWire);
 DeviceAddress sensorDeviceAddress;
 
+// information of the radio
+// Addresses for this node. CHANGE THESE FOR EACH NODE!
+#define NETWORKID     208   // Must be the same for all nodes (0 to 255)
+#define MYNODEID      1   // My node ID (0 to 255)
+#define TONODEID      0   // Destination node ID (0 to 254, 255 = broadcast)
+#define FREQUENCY   RF69_433MHZ// RFM69 frequency
+#define ENCRYPT       false // Set to "true" to use encryption
+#define ENCRYPTKEY    "RADIOMETEOROBLOT" // Use the same 16-byte key on all nodes
+#define USEACK        true // Request ACKs or not (ACKnowledge)
+
+// Create a library object for our RFM69HCW module:
+RFM69 radio;
 
 //interrupt wind speed
 void WindSpeedInterrupt()
@@ -69,6 +78,17 @@ void setup()
 
   Serial.begin(9600);
   LastAffichage = millis();
+
+
+  //init of the radio
+  radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
+  radio.setHighPower(); // Always use this for RFM69HCW
+
+  // Turn on encryption if desired:
+  if (ENCRYPT) {
+    radio.encrypt(ENCRYPTKEY);
+  }
+  
 }
 
 
@@ -92,43 +112,54 @@ void loop()
     LastRain = millis();
   }
 
-  //###############################
+  /* radio */
 
-  if ((millis() - LastAffichage) > 3000)
+  if (radio.receiveDone())
+  {// a message is received so it's time to send the data
+    // the message is "COUCOU", so the length is 7
+    if(radio.DATALEN == 7)
+    {// check if it's the good message
+      SendData = true; //On peut envoyer les données
+    }
+  }
+
+  if (radio.ACKRequested()) //send ACK if requested
   {
-    //Va à la recherche des données
+    radio.sendACK();
+  }
+  
+  if (SendData)
+  {
+    // Collect the data
     WindSpeed = getWindSpeed();
     WindDirection = getWindDirection();
     Temp = getTemperature();
 
-    //Création du message pour la radio :
+    // making the message to send
     Encodage(RainGauge, WindDirection, WindSpeed, Temp);
-    
-    /* Affichage */
-    Serial.print("Vitesse Vent :  ");
-    Serial.print(WindSpeed);
-    Serial.println(" km/h");
+    // the message is inside the variable : MessageData
+    const unsigned int LenMessageData = MessageData.length(); // Length of the message to send
+    char MessageDataChar[LenMessageData];
+    MessageData.toCharArray(MessageDataChar, LenMessageData);
 
-    Serial.print("Direction du vent :  ");
-    Serial.print(WindDirection);
-    Serial.println("°/north");
+    if (USEACK)
+    { // send the data
+      if (radio.sendWithRetry(TONODEID, MessageDataChar, LenMessageData))
+        Serial.println("ACK received!");
+      else
+        Serial.println("no ACK received");
+    }
+    // If you don't need acknowledgements, just use send():
+    else // don't use ACK
+    {
+      radio.send(TONODEID, MessageDataChar, LenMessageData);
+    }
+    //LenMessageData = 0; // reset the packet
 
-    Serial.print("Nombre de mm tombé :  ");
-    Serial.println(RainGauge);
-
-    Serial.print("Temperature :  ");
-    Serial.print(Temp);
-    Serial.println("°C");
-
-    Serial.println("");
-    Serial.print("Message Radio :");
-    Serial.println(MessageData);
-
-    Serial.println("");
-    Serial.println("****************************************************");
-    Serial.println("");
-
-  LastAffichage = millis();
+    //reinitialise les variables de transmissions et autres
+    SendData = false;
+    RainGauge = 0;
+  
   }
 }
 
