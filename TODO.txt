@@ -1,26 +1,10 @@
 **** TO DO-LIST ****
 
-** General :
--Reduce the number of variables and their sizes to decrease the use of RAM
-
 
 
 ** On the code :
--Change the time of save on SD and to transmitt data :
-	for the moment, look at the minute and do the action, but the code will the the action N² times during the minute
 
--Prepare the code for SD card
-
--Change the type of variable of the position of button :
-	bool instead of int
-
--Transfer the change on TestLCD to ReceiverDispalyCard.ino
-
--avoid problem with negative temperature with the making of the radio message and the reading of it.
-
--Add sd write
-
--add timer to send message, save data
+-add timer to send message
 
 
 

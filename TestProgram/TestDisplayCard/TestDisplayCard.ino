@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <SD.h>
+#include <RFM69.h>
 #include <RTClib.h>
 
 
@@ -33,7 +34,7 @@ unsigned long LastdebounceTimeReset = 0;
 unsigned long LastdebounceTimeChange = 0;
 
 //Temps d'affichage des valeurs sur l'écran
-const int TimeAffichageMax = 5; //time to display data (s)
+const int TimeAffichageMax = 10; //time to display data (s)
 unsigned long TimeAffichageCourant = 0;
 unsigned long debutAffichage = 0;
 unsigned long LastdebounceTime = 0;  // the last time the output pin was toggled
@@ -74,20 +75,33 @@ int HourBetweenSave = 1; // number of hour between 2 save
 String DateScheduleReset; //date and schedule of the last reset
 unsigned long LastReset;
 const int TimeBetweenReset = 5; //number of second between two reset
+
+// Create the object for the RTC
 RTC_PCF8523 RTC;
 
 
 // Informations for the save on the SD card :
-String FileName = "DataMeteo.txt";
+String FileName = "Meteo.txt";
 const int PinCSSD = 10; //CS of the SD card reader
+
+//Informations about the radio
+#define NETWORKID     208   // Must be the same for all nodes (0 to 255)
+#define MYNODEID      0   // My node ID (0 to 255)
+#define TONODEID      1   // Destination node ID (0 to 254, 255 = broadcast)
+#define FREQUENCY   RF69_433MHZ  //Frequence d'emission
+#define ENCRYPT       false // Set to "true" to use encryption
+#define ENCRYPTKEY    "RADIOMETEOROBLOT" // Use the same 16-byte key on all nodes
+#define USEACK        true // Request ACKs or not
+const int PinCSRadio = 9; //CS of radio
+
+// Create a library object for our RFM69HCW module:
+RFM69 radio;
 
 
 int PositionButton(int EntreeAnalog){
-  // si bouton appuie : 1
-  //On fait un changement de boutton que lorsque l'on passe de 1 à 0
-
+  // if the button is pressed, the value is 1
   int PositionButton;
-
+  
   if(EntreeAnalog > 900) return(1);
   return(0);
 }
@@ -118,7 +132,7 @@ void setup() {
   }
 
   //data on the reset
-  DateScheduleReset = getDate() + " " + getHoraireHM();
+  DateScheduleReset = getDate() + " " + getHoraireHM() + "   ";
   LastReset = RTC.now().unixtime();
   
   // To init the SD card reader
@@ -134,7 +148,17 @@ void setup() {
 
 
   // To init the radio
-  
+  radio.setCS (PinCSRadio); //changement de pin Slave pour la carte radio
+  radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
+  radio.setHighPower(); // Always use this for RFM69HCW
+  // Turn on encryption if desired:
+  if (ENCRYPT){
+    radio.encrypt(ENCRYPTKEY);
+  }
+
+  Serial.print("Node ");
+  Serial.print(MYNODEID,DEC);
+  Serial.println(" ready");
 }
 
 String WindDirectionName(float WindAngle)
@@ -213,13 +237,13 @@ void Decoding()
   String ReceivedWindDirection = "";
   String ReceivedTemp = "";
   bool Enregistrement = true;
-  //int LengthRadioMessage = radio.DATALEN;
+  int LengthRadioMessage = radio.DATALEN;
   
   for(int j = 0; j < LengthRadioMessage; j++)
   {// Check all the charactere in the message
-    //char CharCurrent = radio.DATA[j];
+    char CharCurrent = radio.DATA[j];
 
-    char CharCurrent = MessageTest[j]; //for the test
+    //char CharCurrent = MessageTest[j]; //for the test
     if(CharCurrent == 'Z')
     {// a data is found or the next mane is found
         Enregistrement = !Enregistrement;
@@ -300,18 +324,37 @@ void loop(){
   /* -----------------------------------------------------------------*/
   /* To received Data from the sensor */
   // Send a radio message to get the data for the sensor card 
+  if((MinuteMessage + CurrentMinute) % MinuteBetweenMessage == 0)
+  {// A radio message is send to the sensor card to received the last data
+    String MessageInit[] = "COUCOU";
+    char LengthMessageInit = 7;
+    if (radio.sendWithRetry(TONODEID, MessageInit, LengthMessageInit))
+    {
+      Serial.println("ACK received!");
+    }
+  }
 
-  Decoding();
-
-  // Update of display Data
-  DataAffichage[0] = RainGaugeReset;
-  DataAffichage[1] = MeanArray(WindDirectionDataDisplay, NumberDataDisplay) / 10;
-  DataAffichage[2] = MeanArray(WindSpeedDataDisplay, NumberDataDisplay) / 10;
-  DataAffichage[3] = (MeanArray(TempDataDisplay, NumberDataDisplay) / 10) - 40;
+  if (radio.receiveDone())
+  {// the data from the sensor card are received
+    // Send an ACK if requested.
+    if (radio.ACKRequested())
+    {
+      radio.sendACK();
+    }
+    
+    Decoding();
+    // Update of display Data
+    DataAffichage[0] = RainGaugeReset;
+    DataAffichage[1] = MeanArray(WindDirectionDataDisplay, NumberDataDisplay) / 10;
+    DataAffichage[2] = MeanArray(WindSpeedDataDisplay, NumberDataDisplay) / 10;
+    DataAffichage[3] = (MeanArray(TempDataDisplay, NumberDataDisplay) / 10) - 40;
+    MinuteMessage = CurrentMinute;
+  }
+  
 
   /* -----------------------------------------------------------------*/
   /* For the display */
-  //On regarde si il y a eu un changement d'état du bouton change
+  // Checking if there is a change in the button state of the display
   PositionChange = PositionButton(analogRead(PinChangeEcran));
   if(PositionChange != LastPositionChange){
     LastdebounceTimeChange = millis();
@@ -372,7 +415,7 @@ void loop(){
       Affichage = true;
       LastDisplay = false; //to force the update of the display
       debutAffichage = long(millis()/1000); //Reinitialise le timer d'affichage
-      DateScheduleReset = getDate() + " " + getHoraireHM(); // the moment the person press the button
+      DateScheduleReset = getDate() + " " + getHoraireHM() + "   "; // the moment the person press the button
       LastReset = UnixTime;
       Serial.println("Reset");
     }
@@ -394,12 +437,12 @@ void loop(){
     DataGroupSave[3] = ((MeanArray(TempDataSave, NumberDataSave) / 10) - 40);
     
     // open the file
-    File dataFile = SD.open("Meteo.txt", FILE_WRITE);
+    File dataFile = SD.open(FileName, FILE_WRITE);
     if (dataFile) {
       // the card had opened the file
       for(int i = 0; i < 4; i++){
-        String LigneCSV = ArrayNameData[i] + getDate() + ";" + getHoraireHM() + ";" + String(DataGroupSave[i]);
-        Serial.println(LigneCSV);
+        String LigneCSV;
+        LigneCSV = ArrayNameData[i] + getDate() + ";" + getHoraireHM() + ";" + String(DataGroupSave[i]);
         dataFile.println(LigneCSV);
       }
       dataFile.close(); //fermeture du fichier
