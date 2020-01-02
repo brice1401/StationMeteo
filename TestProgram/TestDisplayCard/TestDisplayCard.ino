@@ -324,7 +324,7 @@ void loop(){
   /* -----------------------------------------------------------------*/
   /* To received Data from the sensor */
   // Send a radio message to get the data for the sensor card 
-  if((MinuteMessage + CurrentMinute) % MinuteBetweenMessage == 0)
+  if((MinuteMessage + MinuteBetweenMessage) % 60 == CurrentMinute)
   {// A radio message is send to the sensor card to received the last data
     String MessageInit[] = "COUCOU";
     char LengthMessageInit = 7;

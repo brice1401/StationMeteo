@@ -5,10 +5,6 @@
 #include <SD.h>
 #include <RTClib.h>
 #include "DHT.h"
-#include <RFM69.h>
-#include <RFM69registers.h>
-#include <RFM69_ATC.h>
-#include <RFM69_OTA.h>
 
 
 // To test the function :
@@ -80,7 +76,8 @@ String DateScheduleReset; //date and schedule of the last reset
 String DateScheduleSave; // date and schedule of the save
 unsigned long LastReset;
 const int TimeBetweenReset = 5; //number of second between two reset
-RTC_PCF8523 RTC; // give a name to the RTC module
+RTC_PCF8523 RTC;
+
 
 // Informations for the save on the SD card :
 String FileName = "DataMeteo.txt";
@@ -91,20 +88,12 @@ const int PinCSSD = 10; //CS of the SD card reader
 #define DHTTYPE DHT11   // DHT 11
 DHT dht(DHTPIN, DHTTYPE);
 
-// Information for the radio
-#define NETWORKID     208   // Must be the same for all nodes (0 to 255)
-#define MYNODEID      0   // My node ID (0 to 255)
-#define TONODEID      1   // Destination node ID (0 to 254, 255 = broadcast)
-#define FREQUENCY   RF69_433MHZ  //Frequence d'emission
-#define ENCRYPT       false // Set to "true" to use encryption
-#define ENCRYPTKEY    "RADIOMETEOROBLOT" // Use the same 16-byte key on all nodes
-#define USEACK        true // Request ACKs or not
-const int PinCSRadio = 9; //CS of radio
-RFM69 radio; // Create a library object for our RFM69HCW module
-
 int PositionButton(int EntreeAnalog){
   // si bouton appuie : 1
   //On fait un changement de boutton que lorsque l'on passe de 1 à 0
+
+  int PositionButton;
+
   if(EntreeAnalog > 900) return(1);
   return(0);
 }
@@ -134,11 +123,9 @@ void setup() {
     RTC.adjust(DateTime(__DATE__, __TIME__));
   }
 
-  //data on the reset, for save and sending
+  //data on the reset
   DateScheduleReset = getDate() + " " + getHoraireHM();
   LastReset = RTC.now().unixtime();
-  MinuteMessage = RTC.now().minute();
-  SaveHour = RTC.now().hour();
   
   // To init the SD card reader
   pinMode(PinCSSD, OUTPUT); //pin slave du lecteur sd
@@ -154,19 +141,9 @@ void setup() {
   //init the temp/humidity sensor in the house
   dht.begin();
 
-  // To init the radio
-  radio.setCS (PinCSRadio); //Change the slave pin fo the radio card
-  radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
-  radio.setHighPower(); // Always use this for RFM69HCW
-  // Turn on encryption if desired:
-  if (ENCRYPT)
-  {
-    radio.encrypt(ENCRYPTKEY);
-  }
-  Serial.print("Node ");
-  Serial.print(MYNODEID,DEC);
-  Serial.println(" ready");
   
+  MinuteMessage = RTC.now().minute();
+  Serial.println(MinuteMessage);
 }
 
 String WindDirectionName(float WindAngle)
@@ -244,14 +221,17 @@ void Decoding()
   String ReceivedWindSpeed = "";
   String ReceivedWindDirection = "";
   String ReceivedTemp = "";
-  int LengthRadioMessage = radio.DATALEN;
+  bool Enregistrement = true;
+  //int LengthRadioMessage = radio.DATALEN;
   
   for(int j = 0; j < LengthRadioMessage; j++)
   {// Check all the charactere in the message
-    char CharCurrent = radio.DATA[j];
+    //char CharCurrent = radio.DATA[j];
 
+    char CharCurrent = MessageTest[j]; //for the test
     if(CharCurrent == 'Z')
     {// a data is found or the next mane is found
+        Enregistrement = !Enregistrement;
         NumData += 1;
     }
 
@@ -300,7 +280,6 @@ void InitArray(int ArrayData[], int LengthData)
     ArrayData[i] = 0;
   }
 }
-
 String getDate() {
   DateTime now = RTC.now();
   int Year = now.year();
@@ -339,36 +318,15 @@ void loop(){
 
   /* -----------------------------------------------------------------*/
   /* To received Data from the sensor */
-  // Send a radio message to get the data for the sensor card (once every 3 min)
-  if((MinuteMessage + MinuteBetweenMessage) % 60 == CurrentMinute)
-  {// A radio message is send to the sensor card to received the last data
-    String MessageInit[] = "COUCOU";
-    char LengthMessageInit = 7;
-    if (radio.sendWithRetry(TONODEID, MessageInit, LengthMessageInit))
-    {
-      Serial.println("ACK received!");
-    }
-  }
+  // Send a radio message to get the data for the sensor card 
 
-  if (radio.receiveDone())
-  {// the data from the sensor card are received
-    // Send an ACK if requested.
-    if (radio.ACKRequested())
-    {
-      radio.sendACK();
-    }
+  Decoding();
 
-    // The messatge is decode to extract the useful information
-    Decoding();
-
-    // Update of display Data
-    DataAffichage[0] = RainGaugeReset;
-    DataAffichage[1] = MeanArray(WindDirectionDataDisplay, NumberDataDisplay) / 10;
-    DataAffichage[2] = MeanArray(WindSpeedDataDisplay, NumberDataDisplay) / 10;
-    DataAffichage[3] = (MeanArray(TempDataDisplay, NumberDataDisplay) / 10) - 40;
-  }
-
-  
+  // Update of display Data
+  DataAffichage[0] = RainGaugeReset;
+  DataAffichage[1] = MeanArray(WindDirectionDataDisplay, NumberDataDisplay) / 10;
+  DataAffichage[2] = MeanArray(WindSpeedDataDisplay, NumberDataDisplay) / 10;
+  DataAffichage[3] = (MeanArray(TempDataDisplay, NumberDataDisplay) / 10) - 40;
 
   /* -----------------------------------------------------------------*/
   /* For the display */
@@ -442,8 +400,7 @@ void loop(){
 
 
   /* To save the data on the SD card */
-  // once every hour
-  if(((SaveHour + HourBetweenSave) % 24) == CurrentHour)
+  if(((MinuteMessage + 1) % 60) == CurrentMinute)
   {
     // We save the data on the SD card
     String ArrayNameData[NumberDataType] = {"Pluie;", "Direction Vent;", "Force Vent;", "Temperature;"};

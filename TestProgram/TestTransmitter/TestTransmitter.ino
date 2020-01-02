@@ -24,14 +24,14 @@
 // Addresses for this node. CHANGE THESE FOR EACH NODE!
 #define NETWORKID     208   // Must be the same for all nodes (0 to 255)
 #define MYNODEID      1   // My node ID (0 to 255)
-#define TONODEID      0   // Destination node ID (0 to 254, 255 = broadcast)
+#define TONODEID      255   // Destination node ID (0 to 254, 255 = broadcast)
 // RFM69 frequency, uncomment the frequency of your module:
 #define FREQUENCY   RF69_433MHZ
 // AES encryption (or not):
-#define ENCRYPT       true // Set to "true" to use encryption
+#define ENCRYPT       false // Set to "true" to use encryption
 #define ENCRYPTKEY    "RADIOMETEOROBLOT" // Use the same 16-byte key on all nodes
 // Use ACKnowledge when sending messages (or not):
-#define USEACK        true // Request ACKs or not
+#define USEACK        false // Request ACKs or not
 // Create a library object for our RFM69HCW module:
 RFM69 radio;
 
@@ -74,7 +74,7 @@ void loop()
   {
     char input = Serial.read();
     
-    if (input != '\r') // not a carriage return
+    if (input != 'r') // not a carriage return
     {
       sendbuffer[sendlength] = input;
       sendlength++;
@@ -82,7 +82,7 @@ void loop()
 
     // If the input is a carriage return, or the buffer is full:
     
-    if ((input == '\r') || (sendlength == 61)) // CR or buffer full
+    if ((input == 'r') || (sendlength == 61)) // CR or buffer full
     {
       // Send the packet!
 
