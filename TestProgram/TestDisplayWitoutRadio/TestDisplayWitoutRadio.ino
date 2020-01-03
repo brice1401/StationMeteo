@@ -143,7 +143,6 @@ void setup() {
 
   
   MinuteMessage = RTC.now().minute();
-  Serial.println(MinuteMessage);
 }
 
 String WindDirectionName(float WindAngle)
