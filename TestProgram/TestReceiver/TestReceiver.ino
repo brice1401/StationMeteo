@@ -34,12 +34,12 @@
 
 // AES encryption (or not):
 
-#define ENCRYPT       true // Set to "true" to use encryption
+#define ENCRYPT       false // Set to "true" to use encryption
 #define ENCRYPTKEY    "TOPSECRETPASSWRD" // Use the same 16-byte key on all nodes
 
 // Use ACKnowledge when sending messages (or not):
 
-#define USEACK        true // Request ACKs or not
+#define USEACK        false // Request ACKs or not
 
 // Packet sent/received indicator LED (optional):
 
@@ -135,7 +135,7 @@ void loop()
       }
 
       sendlength = 0; // reset the packet
-      Blink(LED,10);
+      Blink(LED,50);
     }
   }
 
@@ -172,7 +172,7 @@ void loop()
       radio.sendACK();
       Serial.println("ACK sent");
     }
-    Blink(LED,10);
+    Blink(LED,50);
   }
 }
 
