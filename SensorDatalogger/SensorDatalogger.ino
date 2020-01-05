@@ -226,11 +226,11 @@ void loop()
 
     // Write them on the vector of data, no need for rain
     WindSpeedDataSave[WritingIndex]; //Speed of wind
-    WindDirectionDataSave[WritingIndex] = round(; //Direction of wind
-    TempDataSave[WritingIndex] = round((Temp * 10) + 40); // Temp on OneWire
-    TempDHT11DataSave[WritingIndex] = round((TempDHT11 * 10) + 40); // Temp on DHT11 
-    HumidityDataSave[WritingIndex] = round(Humidity); //Humidity on DHT11
-    HeatIndexDataSave[WritingIndex] = round((HeatIndex * 10) + 40); //Heat index
+    WindDirectionDataSave[WritingIndex] = int(WindDirection); //Direction of wind
+    TempDataSave[WritingIndex] = int((Temp * 10) + 40); // Temp on OneWire
+    TempDHT11DataSave[WritingIndex] = int((TempDHT11 * 10) + 40); // Temp on DHT11 
+    HumidityDataSave[WritingIndex] = int(Humidity); //Humidity on DHT11
+    HeatIndexDataSave[WritingIndex] = int((HeatIndex * 10) + 40); //Heat index
     
     WritingIndex = (WritingIndex + 1 ) % 20;
     MinuteMessage = CurrentMinute;
@@ -389,10 +389,10 @@ void Encodage(float RainGauge, float WindDirection, float WindSpeed, float Temp)
   //Data[5] : Humidity (%)
   //Data[6] : battery
 
-  int RainGaugeInt = round(RainGauge * 10);
-  int WindDirectionInt = round(WindDirection * 10);
-  int WindSpeedInt = round(WindSpeed * 10);
-  int TempInt = round((Temp + 40) * 10); //to have a positive integer
+  int RainGaugeInt = int(RainGauge * 10);
+  int WindDirectionInt = int(WindDirection * 10);
+  int WindSpeedInt = int(WindSpeed * 10);
+  int TempInt = int((Temp + 40) * 10); //to have a positive integer
   MessageData = MessageData + "RAINZ" + String(RainGaugeInt);
   MessageData = MessageData + "SENSZ" + String(WindDirectionInt);
   MessageData = MessageData + "SPEEDZ" + String(WindSpeedInt);
