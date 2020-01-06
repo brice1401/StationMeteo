@@ -9,31 +9,29 @@
 
 
 //Definition des variables
-float RainGauge = 0; //level of water fell, in mm
+//float RainGauge = 0; //level of water fell, in mm
 
 //Variable volatile pour les interrupt
 volatile long LastWindSpeed = 0;
+volatile unsigned long LastRain = 0;
 volatile unsigned int WindSpeedClick = 0;
+volatile unsigned int RainClick = 0;
 long LastWindCheck = 0;
 
 // Variables pour le comptage pluviométrique
-int LastButtonState = HIGH;
-unsigned long LastRain = 0;  // the last time the output pin was toggled
-
-// Variables pour l'envoie des données
-bool EnvoieData = false;
-String MessageData;
-int LenMessageData;
+//int LastButtonState = HIGH;
+//unsigned long LastRain = 0;  // the last time the output pin was toggled
 
 //Definition des Pins des capteurs
+const byte PinVitesse = 2;
+const byte PinPluie = 3;
+const byte PinTempHum = 4;
+const byte PinTemp = 5;
 
-const byte PinTemp = 7;
-const byte PinPluie = 6;
-const byte PinVitesse = 3;
 const byte PinDirection = A3;
-const byte PinTempHum = 8;
 
-unsigned long LastAffichage;
+
+
 
 // To stock the Data before save, 20 elements = 1h
 const int NumberDataType = 7;
@@ -47,7 +45,7 @@ const int NumberDataType = 7;
  */
 
 const int NumberDataSave = 20; //Number of data to store before save
-int RainGaugeDataSave; //Quantity of water fell
+int RainGaugeDataSave[NumberDataSave]; //Quantity of water fell
 int WindSpeedDataSave[NumberDataSave]; //Speed of wind each 3 min
 int WindDirectionDataSave[NumberDataSave]; //Direction of wind each 3 min
 int TempDataSave[NumberDataSave]; // Temp on OneWire
@@ -65,14 +63,16 @@ int MinuteSensor = 0; // minute of the last message
 int MinuteBetweenSensor = 3; // number of minute between two sensor acquisition
 int HourBetweenSave = 1; // number of hour between 2 save
 String DateScheduleSave; // date and schedule of the save
+
 RTC_PCF8523 RTC;
+
 
 // Informations for the save on the SD card :
 String FileName = "DataMeteo.txt";
 const int PinCSSD = 10; //CS of the SD card reader
 
 // Informations about temp and humidity with the DHT11 sensor (very low cost)
-#define DHTPIN 8     // Digital pin connected to the DHT sensor
+#define DHTPIN  PinTempHum  // Digital pin connected to the DHT sensor
 #define DHTTYPE DHT11   // DHT 11
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -93,13 +93,25 @@ void WindSpeedInterrupt()
   }
 }
 
+
+//interrupt rain
+void RainInterrupt()
+{
+  if ((millis() - LastRain) > 20)
+  {
+    RainClick++;
+    LastRain = millis();
+  }
+}
+
 void setup()
 {
 
   Serial.begin(9600);
   
   //Interrupt for wind speed
-  attachInterrupt(digitalPinToInterrupt(PinVitesse), WindSpeedInterrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(PinVitesse), WindSpeedInterrupt, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PinPluie), RainInterrupt, FALLING);
   interrupts(); //turn on the interrrupt for wind speed
 
   //for rain gauge
@@ -111,7 +123,6 @@ void setup()
   sensors.setResolution(sensorDeviceAddress, 12);
 
   // use to init the RTC module
-  Wire.begin();
   RTC.begin(); // load the time from your computer.
   if (! RTC.initialized())
   {
@@ -134,11 +145,7 @@ void setup()
   //init the temp/humidity sensor in the house
   dht.begin();
 
-  
-  MinuteMessage = RTC.now().minute();
-
-  //For testing
-  LastAffichage = millis();
+  MinuteSensor = RTC.now().minute();
 }
 
 long SumArray(int ArrayData[], int LengthData)
@@ -185,32 +192,16 @@ void loop()
   CurrentMinute = now.minute();
   CurrentHour = now.hour();
   
-  //Lecture du capteur de pluvio
-  int ReadingPluie = digitalRead(PinPluie);
-  
-  if ((millis() - LastRain) > 10)
-  {
-    //to avoid close counting, like a debounce time
-    // if the button state has changed:
-    if (ReadingPluie != LastButtonState) 
-    { //there is a state change
-      if(LastButtonState == 1)
-      { //check if it's a rising or a falling edges, count only the rising
-      RainGauge += 0.2794;
-      }
-      LastButtonState = ReadingPluie;
-    }
-    LastRain = millis();
-  }
 
-
-  if((MinuteMessage + MinuteBetweenMessage) % 60 == CurrentMinute)
+  if((MinuteSensor + MinuteBetweenSensor) % 60 == CurrentMinute)
   {// get the data for the sensor every 3 minutes
 
     //gather all the informations on the sensors
+    float RainGauge;
     float WindDirection; // entier de 0 a 360
     float WindSpeed; //envoie la frequence de rotation de l'anenometre
     float Temp; // variable pour la température
+    RainGauge = getRainGauge();
     WindSpeed = getWindSpeed();
     WindDirection = getWindDirection();
     Temp = getTemperature();
@@ -218,22 +209,24 @@ void loop()
     // collect the information about the temp/humidity on the dht11
     float TempDHT11 = dht.readTemperature();
     float Humidity = dht.readHumidity();
-    if (!isnan(TempInside) || !isnan(HumidityInside))
+    if (!isnan(TempDHT11) || !isnan(Humidity))
     { //check if the reading of temperature or the humidity is ok
-      float HeatIndex = dht.computeHeatIndex(TempInside, HumidityInside, false); 
+      float HeatIndex = dht.computeHeatIndex(TempDHT11, Humidity, false); 
       // Compute heat index in Celsius (isFahreheit = false)
+      HeatIndexDataSave[WritingIndex] = int((HeatIndex + 40) * 10); //Heat index
     }
 
     // Write them on the vector of data, no need for rain
-    WindSpeedDataSave[WritingIndex]; //Speed of wind
+    RainGaugeDataSave[WritingIndex] = int(RainGauge) * 10;
+    WindSpeedDataSave[WritingIndex] = int(WindSpeed) * 10; //Speed of wind
     WindDirectionDataSave[WritingIndex] = int(WindDirection); //Direction of wind
-    TempDataSave[WritingIndex] = int((Temp * 10) + 40); // Temp on OneWire
-    TempDHT11DataSave[WritingIndex] = int((TempDHT11 * 10) + 40); // Temp on DHT11 
+    TempDataSave[WritingIndex] = int((Temp + 40) * 10); // Temp on OneWire
+    TempDHT11DataSave[WritingIndex] = int((TempDHT11 + 40) * 10); // Temp on DHT11 
     HumidityDataSave[WritingIndex] = int(Humidity); //Humidity on DHT11
-    HeatIndexDataSave[WritingIndex] = int((HeatIndex * 10) + 40); //Heat index
     
     WritingIndex = (WritingIndex + 1 ) % 20;
-    MinuteMessage = CurrentMinute;
+
+    MinuteSensor = CurrentMinute;
   }
   
   /* To save the data on the SD card */
@@ -244,16 +237,19 @@ void loop()
     
     // Collection and mean of data before save :
     float DataGroupSave[NumberDataType];
-    DataGroupSave[0] = RainGauge;
+    DataGroupSave[0] = SumArray(RainGaugeDataSave,NumberDataSave) / 10;
     DataGroupSave[1] = MeanArray(WindDirectionDataSave, NumberDataSave) / 10;
     DataGroupSave[2] = MeanArray(WindSpeedDataSave, NumberDataSave) / 10;
     DataGroupSave[3] = ((MeanArray(TempDataSave, NumberDataSave) / 10) - 40);
     DataGroupSave[4] = ((MeanArray(TempDHT11DataSave, NumberDataSave) / 10) - 40);
     DataGroupSave[5] = MeanArray(HumidityDataSave, NumberDataSave); //Humidité
-    DataGroupSave[5] = ((MeanArray(HeatIndexDataSave, NumberDataSave) / 10) - 40);
+    DataGroupSave[6] = ((MeanArray(HeatIndexDataSave, NumberDataSave) / 10) - 40);
 
     // get the date and time of the save
     DateScheduleSave = getDate() + ";" + getHoraireHM() + ";";
+
+    //stop the interrupt during the saving
+    noInterrupts();
     
     // open the file
     File dataFile = SD.open("Meteo.txt", FILE_WRITE);
@@ -262,7 +258,7 @@ void loop()
       // write all the information (Rain, wind dierction and speed, out temp)
       for(int i = 0; i < NumberDataType; i++)
       {
-        String LigneCSV = ArrayNameData[i] + DateScheduleSave + ";" + String(DataGroupSave[i]) + ";exterieur";
+        String LigneCSV = ArrayNameData[i] + DateScheduleSave + String(DataGroupSave[i]);
         dataFile.println(LigneCSV);
       }      
       dataFile.close(); //close the file
@@ -270,50 +266,9 @@ void loop()
     else {
       Serial.println("Couldn't open log file");
     }
+    
+    interrupts(); //activate the interrupt
     SaveHour = CurrentHour;
-    
-  }
-
-
-
-
-
-
-  
-  //###############################
-
-  if ((millis() - LastAffichage) > 3000)
-  {
-    //Va à la recherche des données
-    WindSpeed = getWindSpeed();
-    WindDirection = getWindDirection();
-    Temp = getTemperature();
-    
-    /* Affichage */
-    Serial.print("Vitesse Vent :  ");
-    Serial.print(WindSpeed);
-    Serial.println(" km/h");
-
-    Serial.print("Direction du vent :  ");
-    Serial.print(WindDirection);
-    Serial.println("°/north");
-
-    Serial.print("Nombre de mm tombé :  ");
-    Serial.println(RainGauge);
-
-    Serial.print("Temperature :  ");
-    Serial.print(Temp);
-    Serial.println("°C");
-
-    Serial.println("");
-    Serial.print("Message Radio :");
-    Serial.println(MessageData);
-
-    Serial.println("");
-    Serial.println("****************************************************");
-    Serial.println("");
-
-  LastAffichage = millis();
   }
 }
 
@@ -329,6 +284,14 @@ float getWindSpeed()
   WindSpeed *= 2.4;
 
   return (WindSpeed);
+}
+
+float getRainGauge()
+{
+  // return the rain fell
+  float RainGaugeInter = float(RainClick) * 0.28;
+  RainClick = 0; // set the rain fall to 0
+  return(RainGaugeInter);
 }
 
 float getWindDirection()
@@ -376,25 +339,4 @@ int averageAnalogRead(int pinToRead)
   runningValue /= numberOfReadings;
 
   return(runningValue);
-}
-
-void Encodage(float RainGauge, float WindDirection, float WindSpeed, float Temp){
-  MessageData = "";
-  //Data[0] : Compteur pluie (mm)
-  //Data[1] : direction Vent (°)
-  //Data[2] : Vitesse Vent (km/h)
-  //Data[3] : Temperature (°C)
-  // futur :
-  //Data[4] : Atmospheric pressure (Pa)
-  //Data[5] : Humidity (%)
-  //Data[6] : battery
-
-  int RainGaugeInt = int(RainGauge * 10);
-  int WindDirectionInt = int(WindDirection * 10);
-  int WindSpeedInt = int(WindSpeed * 10);
-  int TempInt = int((Temp + 40) * 10); //to have a positive integer
-  MessageData = MessageData + "RAINZ" + String(RainGaugeInt);
-  MessageData = MessageData + "SENSZ" + String(WindDirectionInt);
-  MessageData = MessageData + "SPEEDZ" + String(WindSpeedInt);
-  MessageData = MessageData + "TEMPZ" + String(TempInt);
 }
