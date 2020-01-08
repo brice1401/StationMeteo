@@ -4,8 +4,14 @@
 #include <DallasTemperature.h>
 #include <RFM69.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 /*Constants*/
 #define TIME_STEP_RAIN 10
+
+#define MAX_LENGTH_RADIO_MESSAGE 255
 
 #define RECEIVE_DONE_MESSAGE "COUCOU" // Un-used
 #define RECEIVE_DONE_MESSAGE_LENGTH 7 // The length of the string used as *receiveDone* + 1
@@ -24,11 +30,6 @@ long LastWindCheck = 0;
 // Variables for rain gauge
 int LastButtonState = HIGH;  // WARNING: Potential non consistent assignation
 unsigned long lastRain = 0;  // the last time the output pin was toggled
-
-// Variables for sending data
-bool SendData = false;
-String messageData;
-//unsigned int LenMessageData;
 
 // TODO: Use #define PIN_FOO 43 instead of constants
 //Definition of captor's pins
@@ -93,52 +94,40 @@ void loopRainLevel() {
   }
 }
 
-void loopRadio() {
-
-  if(radio.receiveDone())
-
-  if (radio.receiveDone())
-  {// a message is received so it's time to send the data
-    // the message is RECEIVE_DONE_MESSAGE, so the length is RECEIVE_DONE_MESSAGE_LENGTH
-    if(radio.DATALEN == RECEIVE_DONE_MESSAGE_LENGTH)
-    {// check if it's the good message
-      SendData = true; //On peut envoyer les données
-    }
-  }
-
-  if (radio.ACKRequested()) //send ACK if requested
-  {
-    radio.sendACK();
-  }
-  
-  if (SendData)
-  {
-    // Collect the data
-    windSpeed = getWindSpeed();
-    windDirection = getWindDirection();
-    Temp = getTemperature();
-
-    // making the message to send
-    encode(rainGauge, windDirection, windSpeed, Temp);
-    // the message is inside the variable : messageData
-    const unsigned int LenMessageData = messageData.length(); // Length of the message to send
-    char messageDataChar[LenMessageData];
-    messageData.toCharArray(messageDataChar, LenMessageData);
-
+void radioSend(char *message) {
 #if USEACK
     // send the data
-    if (radio.sendWithRetry(TONODEID, messageDataChar, LenMessageData))
+    if (radio.sendWithRetry(TONODEID, message, (unsigned int) strlen(message)))
       Serial.println("ACK received!");
     else
       Serial.println("no ACK received");
 #else
     // If you don't need acknowledgements, just use send():
-    radio.send(TONODEID, messageDataChar, LenMessageData);
+    radio.send(TONODEID, message, (unsigned int) strlen(message));
 #endif
-    //LenMessageData = 0; // reset the packet
+}
 
-    //reinitialise les variables de transmissions et autres
-    SendData = false;
+void loopRadio() {
+
+  if (radio.receiveDone() && radio.DATALEN == RECEIVE_DONE_MESSAGE_LENGTH)
+  {// a message is received with the good length: time to send data
+    if (radio.ACKRequested()) //send ACK if requested
+      radio.sendACK();
+
+    // Collect the data
+    windSpeed = getWindSpeed();
+    windDirection = getWindDirection();
+    Temp = getTemperature();
+
+    char *message;
+    // Build the message into `message`
+    if(encode(message, rainGauge, windDirection, windSpeed, Temp) > 0)
+    {
+        //If the writing is successful
+        radioSend(message);
+        free(message);
+    }
+
     rainGauge = 0;
   }
 }
@@ -249,10 +238,12 @@ int averageAnalogRead(int pinToRead)
 /**
  * Encode all the metrics into a String
  * 
+ * Once the message has been consumed, message should be free-ed.
+ * 
  * TODO: Return a String instead of using a global-scoped string.
  * TODO: Export this function in a mini lib shared accross the sources.
  */
-void encode(float rainGauge, float windDirection, float windSpeed, float Temp){
+int encode(char* message, float rainGauge, float windDirection, float windSpeed, float Temp){
   messageData = "";  //FIXME: potential memory leak
   //Data[0] : Rain level (mm)
   //Data[1] : Wind direction (°)
@@ -263,23 +254,20 @@ void encode(float rainGauge, float windDirection, float windSpeed, float Temp){
   //Data[5] : Humidity (%)
   //Data[6] : battery
 
+  // Allowing MAX_LENGTH_RADIO_MESSAGE byte for the message
+  message = malloc(MAX_LENGTH_RADIO_MESSAGE * sizeof(char));
+
   int rainGaugeInt = round(rainGauge * 10);
   int windDirectionInt = round(windDirection * 10);
   int windSpeedInt = round(windSpeed * 10);
-  int TempInt = round((Temp + 40) * 10); //to have a positive integer
-  messageData = messageData + "RAINZ" + String(rainGaugeInt);
-  messageData = messageData + "SENSZ" + String(windDirectionInt);
-  messageData = messageData + "SPEEDZ" + String(windSpeedInt);
-  messageData = messageData + "TEMPZ" + String(TempInt);
+  int tempInt = round((Temp + 40) * 10); //to have a positive integer
 
+  // Write in message and return the number of chars sucessfully written (see method documentation)
+  return snprintf(message, MAX_LENGTH_RADIO_MESSAGE, "RAINZ%dSENSZ%dSPEEDZ%dTEMPZ%d", &rainGauge, &windDirection, &windSpeed, &tempInt);
 }
 
 /**
  * Decode a String encoded with the previous `encode` method.
- * 
- * @Require An encoded String and pointer where to store the results
- * @Assign The given pointers
- * @Ensure Valid decoded values in the pointer if the return code is 0.
  * 
  * TODO: Export this function in a mini lib shared accross the sources.
  */
@@ -297,12 +285,12 @@ int decode(float *rainGauge, float *windDirection, float *windSpeed, float *Temp
   int rainGaugeInt = round(rainGauge * 10);
   int windDirectionInt = round(windDirection * 10);
   int windSpeedInt = round(windSpeed * 10);
-  int TempInt = round((Temp + 40) * 10); //to have a positive integer
+  int tempInt = round((Temp + 40) * 10); //to have a positive integer
 
   messageData = messageData + "RAINZ" + String(rainGaugeInt);
   messageData = messageData + "SENSZ" + String(windDirectionInt);
   messageData = messageData + "SPEEDZ" + String(windSpeedInt);
-  messageData = messageData + "TEMPZ" + String(TempInt);
+  messageData = messageData + "TEMPZ" + String(tempInt);
 
   
 }
