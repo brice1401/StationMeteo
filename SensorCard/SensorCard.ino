@@ -11,14 +11,14 @@
 #define RECEIVE_DONE_MESSAGE_LENGTH 7 // The length of the string used as *receiveDone* + 1
 
 //Variables
-float RainGauge = 0; //level of water fell, in mm
-float WindDirection; // float from 0 to 360
-float WindSpeed; //envoie la frequence de rotation de l'anenometre
+float rainGauge = 0; //level of water fell, in mm
+float windDirection; // float from 0 to 360
+float windSpeed; //envoie la frequence de rotation de l'anenometre
 float Temp; // variable for temperature
 
 //Variable volatile for interrupt
 volatile long LastWindSpeed = 0;
-volatile unsigned int WindSpeedClick = 0;
+volatile unsigned int windSpeedClick = 0;
 long LastWindCheck = 0;
 
 // Variables for rain gauge
@@ -27,7 +27,7 @@ unsigned long lastRain = 0;  // the last time the output pin was toggled
 
 // Variables for sending data
 bool SendData = false;
-String MessageData;
+String messageData;
 //unsigned int LenMessageData;
 
 // TODO: Use #define PIN_FOO 43 instead of constants
@@ -59,11 +59,11 @@ DeviceAddress sensorDeviceAddress;
 RFM69 radio;
 
 //interrupt wind speed
-void WindSpeedInterrupt()
+void windSpeedInterrupt()
 {
   if ((millis() - LastWindSpeed) > 10)
   {
-    WindSpeedClick++;
+    windSpeedClick++;
     LastWindSpeed = millis();
   }
 }
@@ -85,7 +85,7 @@ void loopRainLevel() {
     { //there is a state change
       if(LastButtonState == 1)
       { //check if it's a rising or a falling edges, count only the rising
-        RainGauge += 0.2794;  // TODO: Create a #define statement for this value
+        rainGauge += 0.2794;  // TODO: Create a #define statement for this value
       }
       LastButtonState = readingRain;
     }
@@ -114,39 +114,39 @@ void loopRadio() {
   if (SendData)
   {
     // Collect the data
-    WindSpeed = getWindSpeed();
-    WindDirection = getWindDirection();
+    windSpeed = getWindSpeed();
+    windDirection = getWindDirection();
     Temp = getTemperature();
 
     // making the message to send
-    Encodage(RainGauge, WindDirection, WindSpeed, Temp);
-    // the message is inside the variable : MessageData
-    const unsigned int LenMessageData = MessageData.length(); // Length of the message to send
-    char MessageDataChar[LenMessageData];
-    MessageData.toCharArray(MessageDataChar, LenMessageData);
+    encode(rainGauge, windDirection, windSpeed, Temp);
+    // the message is inside the variable : messageData
+    const unsigned int LenMessageData = messageData.length(); // Length of the message to send
+    char messageDataChar[LenMessageData];
+    messageData.toCharArray(messageDataChar, LenMessageData);
 
 #if USEACK
     // send the data
-    if (radio.sendWithRetry(TONODEID, MessageDataChar, LenMessageData))
+    if (radio.sendWithRetry(TONODEID, messageDataChar, LenMessageData))
       Serial.println("ACK received!");
     else
       Serial.println("no ACK received");
 #else
     // If you don't need acknowledgements, just use send():
-    radio.send(TONODEID, MessageDataChar, LenMessageData);
+    radio.send(TONODEID, messageDataChar, LenMessageData);
 #endif
     //LenMessageData = 0; // reset the packet
 
     //reinitialise les variables de transmissions et autres
     SendData = false;
-    RainGauge = 0;
+    rainGauge = 0;
   }
 }
 
 void setup()
 {
   //Interrupt for wind speed
-  attachInterrupt(digitalPinToInterrupt(PIN_SPEED), WindSpeedInterrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(PIN_SPEED), windSpeedInterrupt, RISING);
   interrupts(); //turn on the interrrupt for wind speed
 
   //for rain gauge
@@ -180,6 +180,7 @@ void loop()
 
   loopRainLevel()
 
+  //Do all the radio processing
   loopRadio();
 
 }
@@ -190,12 +191,12 @@ float getWindSpeed()
   float deltaTime = millis() - LastWindCheck; //time between two check of wind speed (always < 3min)
   deltaTime /= 1000.0; //convert to s
 
-  float WindSpeed = float(WindSpeedClick) / deltaTime; //frequency of click
-  WindSpeedClick = 0; //init the counter
+  float windSpeed = float(windSpeedClick) / deltaTime; //frequency of click
+  windSpeedClick = 0; //init the counter
   LastWindCheck = millis();
-  WindSpeed *= 2.4;
+  windSpeed *= 2.4;
 
-  return (WindSpeed);
+  return (windSpeed);
 }
 
 float getWindDirection()
@@ -245,8 +246,45 @@ int averageAnalogRead(int pinToRead)
   return(runningValue);
 }
 
-void Encodage(float RainGauge, float WindDirection, float WindSpeed, float Temp){
-  MessageData = "";
+/**
+ * Encode all the metrics into a String
+ * 
+ * TODO: Return a String instead of using a global-scoped string.
+ * TODO: Export this function in a mini lib shared accross the sources.
+ */
+void encode(float rainGauge, float windDirection, float windSpeed, float Temp){
+  messageData = "";  //FIXME: potential memory leak
+  //Data[0] : Rain level (mm)
+  //Data[1] : Wind direction (°)
+  //Data[2] : Wind speed (km/h)
+  //Data[3] : Temperature (°C)
+  // TODO:
+  //Data[4] : Atmospheric pressure (Pa)
+  //Data[5] : Humidity (%)
+  //Data[6] : battery
+
+  int rainGaugeInt = round(rainGauge * 10);
+  int windDirectionInt = round(windDirection * 10);
+  int windSpeedInt = round(windSpeed * 10);
+  int TempInt = round((Temp + 40) * 10); //to have a positive integer
+  messageData = messageData + "RAINZ" + String(rainGaugeInt);
+  messageData = messageData + "SENSZ" + String(windDirectionInt);
+  messageData = messageData + "SPEEDZ" + String(windSpeedInt);
+  messageData = messageData + "TEMPZ" + String(TempInt);
+
+}
+
+/**
+ * Decode a String encoded with the previous `encode` method.
+ * 
+ * @Require An encoded String and pointer where to store the results
+ * @Assign The given pointers
+ * @Ensure Valid decoded values in the pointer if the return code is 0.
+ * 
+ * TODO: Export this function in a mini lib shared accross the sources.
+ */
+int decode(float *rainGauge, float *windDirection, float *windSpeed, float *Temp){
+  messageData = "";
   //Data[0] : Compteur pluie (mm)
   //Data[1] : direction Vent (°)
   //Data[2] : Vitesse Vent (km/h)
@@ -256,12 +294,15 @@ void Encodage(float RainGauge, float WindDirection, float WindSpeed, float Temp)
   //Data[5] : Humidity (%)
   //Data[6] : battery
 
-  int RainGaugeInt = round(RainGauge * 10);
-  int WindDirectionInt = round(WindDirection * 10);
-  int WindSpeedInt = round(WindSpeed * 10);
+  int rainGaugeInt = round(rainGauge * 10);
+  int windDirectionInt = round(windDirection * 10);
+  int windSpeedInt = round(windSpeed * 10);
   int TempInt = round((Temp + 40) * 10); //to have a positive integer
-  MessageData = MessageData + "RAINZ" + String(RainGaugeInt);
-  MessageData = MessageData + "SENSZ" + String(WindDirectionInt);
-  MessageData = MessageData + "SPEEDZ" + String(WindSpeedInt);
-  MessageData = MessageData + "TEMPZ" + String(TempInt);
+
+  messageData = messageData + "RAINZ" + String(rainGaugeInt);
+  messageData = messageData + "SENSZ" + String(windDirectionInt);
+  messageData = messageData + "SPEEDZ" + String(windSpeedInt);
+  messageData = messageData + "TEMPZ" + String(TempInt);
+
+  
 }
