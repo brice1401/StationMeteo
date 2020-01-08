@@ -4,6 +4,11 @@
 #include <DallasTemperature.h>
 #include <RFM69.h>
 
+/*Constants*/
+#define TIME_STEP_RAIN 10
+
+#define RECEIVE_DONE_MESSAGE "COUCOU" // Un-used
+#define RECEIVE_DONE_MESSAGE_LENGTH 7 // The length of the string used as *receiveDone* + 1
 
 //Variables
 float RainGauge = 0; //level of water fell, in mm
@@ -40,12 +45,12 @@ OneWire oneWire(PIN_TEMP);
 DallasTemperature sensors(&oneWire);
 DeviceAddress sensorDeviceAddress;
 
-// information of the radio
+// Information of the radio
 // Addresses for this node. CHANGE THESE FOR EACH NODE!
 #define NETWORKID     208   // Must be the same for all nodes (0 to 255)
 #define MYNODEID      1   // My node ID (0 to 255)
 #define TONODEID      0   // Destination node ID (0 to 254, 255 = broadcast)
-#define FREQUENCY   RF69_433MHZ// RFM69 frequency
+#define FREQUENCY     RF69_433MHZ// RFM69 frequency
 #define ENCRYPT       false // Set to "true" to use encryption
 #define ENCRYPTKEY    "RADIOMETEOROBLOT" // Use the same 16-byte key on all nodes
 #define USEACK        true // Request ACKs or not (ACKnowledge)
@@ -60,6 +65,81 @@ void WindSpeedInterrupt()
   {
     WindSpeedClick++;
     LastWindSpeed = millis();
+  }
+}
+
+/**
+ * Do processing related to
+ * */
+void loopRainLevel() {
+  //Fetch pluviometry sensor
+  /*TODO: Reduce the speed of digitalRead? It may reduce energy
+    consumption. However, need to check the measure impact.*/
+  int readingRain = digitalRead(PIN_RAIN);
+
+  /*Process every TIME_STEP_RAIN ms using lastRain as step indicator*/
+  if ((millis() - lastRain) > TIME_STEP_RAIN)
+  {
+    // if the button state has changed:
+    if (readingRain != LastButtonState) 
+    { //there is a state change
+      if(LastButtonState == 1)
+      { //check if it's a rising or a falling edges, count only the rising
+        RainGauge += 0.2794;  // TODO: Create a #define statement for this value
+      }
+      LastButtonState = readingRain;
+    }
+    lastRain = millis();
+  }
+}
+
+void loopRadio() {
+
+  if(radio.receiveDone())
+
+  if (radio.receiveDone())
+  {// a message is received so it's time to send the data
+    // the message is RECEIVE_DONE_MESSAGE, so the length is RECEIVE_DONE_MESSAGE_LENGTH
+    if(radio.DATALEN == RECEIVE_DONE_MESSAGE_LENGTH)
+    {// check if it's the good message
+      SendData = true; //On peut envoyer les données
+    }
+  }
+
+  if (radio.ACKRequested()) //send ACK if requested
+  {
+    radio.sendACK();
+  }
+  
+  if (SendData)
+  {
+    // Collect the data
+    WindSpeed = getWindSpeed();
+    WindDirection = getWindDirection();
+    Temp = getTemperature();
+
+    // making the message to send
+    Encodage(RainGauge, WindDirection, WindSpeed, Temp);
+    // the message is inside the variable : MessageData
+    const unsigned int LenMessageData = MessageData.length(); // Length of the message to send
+    char MessageDataChar[LenMessageData];
+    MessageData.toCharArray(MessageDataChar, LenMessageData);
+
+#if USEACK
+    // send the data
+    if (radio.sendWithRetry(TONODEID, MessageDataChar, LenMessageData))
+      Serial.println("ACK received!");
+    else
+      Serial.println("no ACK received");
+#else
+    // If you don't need acknowledgements, just use send():
+    radio.send(TONODEID, MessageDataChar, LenMessageData);
+#endif
+    //LenMessageData = 0; // reset the packet
+
+    //reinitialise les variables de transmissions et autres
+    SendData = false;
+    RainGauge = 0;
   }
 }
 
@@ -98,73 +178,10 @@ void setup()
 void loop()
 {
 
-  //Fetch pluviometry sensor
-  int readingRain = digitalRead(PIN_RAIN);
+  loopRainLevel()
 
-  /*Process every 10 ms using lastRain as step indicator*/
-  if ((millis() - lastRain) > 10)
-  {
-    // if the button state has changed:
-    if (readingRain != LastButtonState) 
-    { //there is a state change
-      if(LastButtonState == 1)
-      { //check if it's a rising or a falling edges, count only the rising
-      RainGauge += 0.2794;  // TODO: Create a #define statement for this value
-      }
-      LastButtonState = readingRain;
-    }
-    lastRain = millis();
-  }
+  loopRadio();
 
-  /* radio */
-
-  if (radio.receiveDone())
-  {// a message is received so it's time to send the data
-    // the message is "COUCOU", so the length is 7
-    if(radio.DATALEN == 7)
-    {// check if it's the good message
-      SendData = true; //On peut envoyer les données
-    }
-  }
-
-  if (radio.ACKRequested()) //send ACK if requested
-  {
-    radio.sendACK();
-  }
-  
-  if (SendData)
-  {
-    // Collect the data
-    WindSpeed = getWindSpeed();
-    WindDirection = getWindDirection();
-    Temp = getTemperature();
-
-    // making the message to send
-    Encodage(RainGauge, WindDirection, WindSpeed, Temp);
-    // the message is inside the variable : MessageData
-    const unsigned int LenMessageData = MessageData.length(); // Length of the message to send
-    char MessageDataChar[LenMessageData];
-    MessageData.toCharArray(MessageDataChar, LenMessageData);
-
-    if (USEACK)
-    { // send the data
-      if (radio.sendWithRetry(TONODEID, MessageDataChar, LenMessageData))
-        Serial.println("ACK received!");
-      else
-        Serial.println("no ACK received");
-    }
-    // If you don't need acknowledgements, just use send():
-    else // don't use ACK
-    {
-      radio.send(TONODEID, MessageDataChar, LenMessageData);
-    }
-    //LenMessageData = 0; // reset the packet
-
-    //reinitialise les variables de transmissions et autres
-    SendData = false;
-    RainGauge = 0;
-  
-  }
 }
 
 float getWindSpeed()
