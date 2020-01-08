@@ -1,15 +1,31 @@
 **** TO DO-LIST ****
 
+** Genral :
+-Do an evaluation on how to send data :
+	* Radio on an other arduino
+	* Wifi
+	* 2.4 GHz
+	* 2G/3G/4G and send them to a website
+
+-Add more sensor :
+	* More accurate humidity sensor
+	* Barometric pressure
+	* Lightning
+	* Light
+	* Battery level
+	* dewpoint
+	* UV
+	* Radiation
+
+- Send the Data to wunderground
 
 
 ** On the code :
 
--add timer to send message
-
+-Mean of a circular value for wind direction
 
 
 
 ** Far away future **
 -Add a solar panel and a Li-ion batery
--Add more sensor
 
