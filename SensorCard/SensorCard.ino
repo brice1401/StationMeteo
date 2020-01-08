@@ -7,7 +7,7 @@
 
 //Variables
 float RainGauge = 0; //level of water fell, in mm
-float WindDirection; // integer de 0 a 360
+float WindDirection; // float from 0 to 360
 float WindSpeed; //envoie la frequence de rotation de l'anenometre
 float Temp; // variable for temperature
 
@@ -17,25 +17,26 @@ volatile unsigned int WindSpeedClick = 0;
 long LastWindCheck = 0;
 
 // Variables for rain gauge
-int LastButtonState = HIGH;
-unsigned long LastRain = 0;  // the last time the output pin was toggled
+int LastButtonState = HIGH;  // WARNING: Potential non consistent assignation
+unsigned long lastRain = 0;  // the last time the output pin was toggled
 
 // Variables for sending data
 bool SendData = false;
 String MessageData;
 //unsigned int LenMessageData;
 
-//Definition des Pins des capteurs
+// TODO: Use #define PIN_FOO 43 instead of constants
+//Definition of captor's pins
 
-const byte PinTemp = 7;
-const byte PinPluie = 6;
-const byte PinVitesse = 3;
-const byte PinDirection = A3;
+const byte PIN_TEMP = 7;
+const byte PIN_RAIN = 6;
+const byte PIN_SPEED = 3;
+const byte PIN_DIRECTION = A3;
 
 unsigned long LastAffichage;
 
 // init of temp sensor with oneWire communication
-OneWire oneWire(PinTemp);
+OneWire oneWire(PIN_TEMP);
 DallasTemperature sensors(&oneWire);
 DeviceAddress sensorDeviceAddress;
 
@@ -65,11 +66,11 @@ void WindSpeedInterrupt()
 void setup()
 {
   //Interrupt for wind speed
-  attachInterrupt(digitalPinToInterrupt(PinVitesse), WindSpeedInterrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(PIN_SPEED), WindSpeedInterrupt, RISING);
   interrupts(); //turn on the interrrupt for wind speed
 
   //for rain gauge
-  pinMode(PinPluie, INPUT);
+  pinMode(PIN_RAIN, INPUT);
 
   //for temperature
   sensors.begin();
@@ -91,25 +92,28 @@ void setup()
   
 }
 
-
+/**
+ * Main function executed by the Arduino, loop over and over this function
+ * */
 void loop()
 {
-  //Lecture du capteur de pluvio
-  int ReadingPluie = digitalRead(PinPluie);
-  
-  if ((millis() - LastRain) > 10)
+
+  //Fetch pluviometry sensor
+  int readingRain = digitalRead(PIN_RAIN);
+
+  /*Process every 10 ms using lastRain as step indicator*/
+  if ((millis() - lastRain) > 10)
   {
-    //to avoid close counting, like a debounce time
     // if the button state has changed:
-    if (ReadingPluie != LastButtonState) 
+    if (readingRain != LastButtonState) 
     { //there is a state change
       if(LastButtonState == 1)
       { //check if it's a rising or a falling edges, count only the rising
-      RainGauge += 0.2794;
+      RainGauge += 0.2794;  // TODO: Create a #define statement for this value
       }
-      LastButtonState = ReadingPluie;
+      LastButtonState = readingRain;
     }
-    LastRain = millis();
+    lastRain = millis();
   }
 
   /* radio */
@@ -180,7 +184,7 @@ float getWindSpeed()
 float getWindDirection()
 {
   //return the angle forme between the wind and north (north = 0°)
-  float WindAnalog = averageAnalogRead(PinDirection);
+  float WindAnalog = averageAnalogRead(PIN_DIRECTION);
   
   if (WindAnalog < 76) return(112.5);
   if (WindAnalog < 91) return(67.5);
