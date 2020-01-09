@@ -5,6 +5,7 @@
 #include <SD.h>
 #include <RTClib.h>
 #include "DHT.h"
+#include <math.h>
 
 
 
@@ -167,6 +168,33 @@ float MeanArray(int ArrayData[], int LengthData)
   return(Mean);
 }
 
+float MeanArrayAngle(int ArrayData[], int LengthData)
+{
+  // This function return the average angle (in degree) of the wind using the atan2 function
+  double  ArraySin[LengthData];
+  double ArrayCos[LengthData];
+
+  for(int i = 0; i < LengthData; i++)
+  {
+    // Calculate the sin and cosine of all angle
+    ArraySin[i] = sin(double(ArrayData[i]) * 3.14/180.0);
+    ArrayCos[i] = cos(double(ArrayData[i]) * 3.14/180.0);
+  }
+
+  double SumSin;
+  double SumCos;
+  for(int i = 0; i < LengthData; i++)
+  {
+    // calculate the mean of sin(x) and cos(x)
+    SumSin += ArraySin[i];
+    SumCos += ArrayCos[i];
+  }
+  double angle;
+  angle = atan2(SumSin / double(LengthData), SumCos / double(LengthData)) * 180.0/3.14;
+  return(float(angle));
+  
+}
+
 String getDate() {
   DateTime now = RTC.now();
   int Year = now.year();
@@ -238,7 +266,7 @@ void loop()
     // Collection and mean of data before save :
     float DataGroupSave[NumberDataType];
     DataGroupSave[0] = SumArray(RainGaugeDataSave,NumberDataSave) / 10;
-    DataGroupSave[1] = MeanArray(WindDirectionDataSave, NumberDataSave) / 10;
+    DataGroupSave[1] = MeanArrayAngle(WindDirectionDataSave, NumberDataSave); // the function return directly the angle
     DataGroupSave[2] = MeanArray(WindSpeedDataSave, NumberDataSave) / 10;
     DataGroupSave[3] = ((MeanArray(TempDataSave, NumberDataSave) / 10) - 40);
     DataGroupSave[4] = ((MeanArray(TempDHT11DataSave, NumberDataSave) / 10) - 40);
