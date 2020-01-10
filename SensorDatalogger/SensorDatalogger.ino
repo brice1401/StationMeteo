@@ -202,14 +202,40 @@ float MeanArrayAngle(int ArrayData[], int LengthData)
 
 float DewPoint(float Temp, float Humidity)
 {
-  // calculate the dew point using the simplified formula on wikipedia
-  if((Temp > 0) && (Temp < 60) && (Humidity > 0) && (Humidity < 100))
+  // calculate the dew point using the simplified formula on https://weather.station.software/blog/what-are-dew-and-frost-points/
+  if((Temp < 60) && (Humidity > 0) && (Humidity < 100))
   {
     double dewPoint;
-    dewPoint = pow( double(Humidity / 100), double(1 / 8)) * (112 + (0.9 * Temp)) + (0.1 * Temp) - 112;
-    return(dewPoint);
+    dewPoint = pow( double(Humidity / 100), double(1 / 8)) * (112 + (0.9 * double(Temp))) + (0.1 * double(Temp)) - 112;
+    return(float(dewPoint));
   }
   return(-1);
+}
+
+float IcingPoint(float Temp, float dewPoint)
+{
+  // this function calculate the icing point of water with the temp and the dew point
+  // https://weather.station.software/blog/what-are-dew-and-frost-points/
+  double icingPoint;
+  icingPoint = 2671.02 / ((2954.61/(double(Temp) + 273.15)) + 2.193665*log(double(Temp)+273.15) - 13.3448);
+  icingPoint += (double(dewPoint) + 273.15) - double(Temp + 273.15) - 273.15;
+  return(float(icingPoint));
+}
+
+float WindChill(float Temp, float windSpeed)
+{
+  // calculate the temperature as the body will feel it
+  // Temp in °C
+  // windSpeed in km/h
+  // formula on : https://fr.wikipedia.org/wiki/Refroidissement_%C3%A9olien
+  float tempWindChill;
+  if(windSpeed < 4.8)
+  {
+    tempWindChill = Temp + 0.2 * (0.1345*Temp - 1.59) * windSpeed;
+    return(tempWindChill);
+  }
+  tempWindChill = 13.12 + 0.6215*Temp + (0.3965*Temp - 11.37) * windSpeed;
+  return(tempWindChill);
 }
 
 String getDate() {
