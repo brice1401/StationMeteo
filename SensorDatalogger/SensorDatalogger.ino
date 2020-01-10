@@ -198,7 +198,18 @@ float MeanArrayAngle(int ArrayData[], int LengthData)
     angle += 360;
   }
   return(float(angle));
-  
+}
+
+float DewPoint(float Temp, float Humidity)
+{
+  // calculate the dew point using the simplified formula on wikipedia
+  if((Temp > 0) && (Temp < 60) && (Humidity > 0) && (Humidity < 100))
+  {
+    double dewPoint;
+    dewPoint = pow( double(Humidity / 100), double(1 / 8)) * (112 + (0.9 * Temp)) + (0.1 * Temp) - 112;
+    return(dewPoint);
+  }
+  return(-1);
 }
 
 String getDate() {
