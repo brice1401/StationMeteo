@@ -191,6 +191,12 @@ float MeanArrayAngle(int ArrayData[], int LengthData)
   }
   double angle;
   angle = atan2(SumSin / double(LengthData), SumCos / double(LengthData)) * 180.0/3.14;
+
+  if(angle < 0)
+  { // function atan2 return an angle between -pi and pi, 
+    // so if the angle is negative, add 360° to have a result between 0 and 360°
+    angle += 360;
+  }
   return(float(angle));
   
 }
