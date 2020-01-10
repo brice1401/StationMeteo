@@ -13,19 +13,18 @@
 	* Lightning
 	* Light
 	* Battery level
-	* dewpoint
 	* UV
 	* Radiation
 
 - Send the Data to wunderground
+	* use ethernet shield to send data to the web
+	* 
 
 
 ** On the code :
 
--Mean of a circular value for wind direction
-
 
 
 ** Far away future **
--Add a solar panel and a Li-ion batery
-
+- Add a solar panel and a Li-ion batery
+- Create a stategie to put the arduino on sleep mode
