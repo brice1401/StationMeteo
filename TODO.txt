@@ -27,4 +27,6 @@
 
 ** Far away future **
 - Add a solar panel and a Li-ion batery
-- Create a stategie to put the arduino on sleep mode
+- Create a stategy to put the arduino on sleep mode
+
+* deal with include code library
