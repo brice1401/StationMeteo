@@ -1,15 +1,30 @@
 **** TO DO-LIST ****
 
+** Genral :
+-Do an evaluation on how to send data :
+	* Radio on an other arduino
+	* Wifi
+	* 2.4 GHz
+	* 2G/3G/4G and send them to a website
+
+-Add more sensor :
+	* More accurate humidity sensor
+	* Barometric pressure
+	* Lightning
+	* Light
+	* Battery level
+	* UV
+	* Radiation
+
+- Send the Data to wunderground
+	* use ethernet shield to send data to the web
+	* 
 
 
 ** On the code :
 
--add timer to send message
-
-
 
 
 ** Far away future **
--Add a solar panel and a Li-ion batery
--Add more sensor
-
+- Add a solar panel and a Li-ion batery
+- Create a stategie to put the arduino on sleep mode

@@ -6,3 +6,4 @@ The project was to built a small weather station that communicate with a card at
 ## Authors
 
 * **Roblot Brice** - *Initial work*
+* **Titaux12** - Formatting and add a professionnal approch of code
