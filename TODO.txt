@@ -22,7 +22,9 @@
 
 
 ** On the code :
-
+	* recreate the function to code/decode message
+	* transfer the function from datalogger to sensorcard and displayCard
+	* create the code for ethernet shield and internet connexion
 
 
 ** Far away future **

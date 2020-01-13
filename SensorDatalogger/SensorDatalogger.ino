@@ -6,6 +6,8 @@
 #include <RTClib.h>
 #include "DHT.h"
 #include <math.h>
+#include "weatherFunction.h"
+
 
 
 
@@ -149,95 +151,6 @@ void setup()
   MinuteSensor = RTC.now().minute();
 }
 
-long SumArray(int ArrayData[], int LengthData)
-{
-  //Calculate the sum of all the element of an int Array
-  long Sum = 0;
-  for(int i=0; i<LengthData; i++)
-  {
-    Sum += ArrayData[i];
-  }
-  return(Sum);
-}
-
-float MeanArray(int ArrayData[], int LengthData)
-{
-  long Sum = SumArray(ArrayData, LengthData);
-  float Mean;
-  Mean = float(Sum)/float(LengthData);
-  return(Mean);
-}
-
-float MeanArrayAngle(int ArrayData[], int LengthData)
-{
-  // This function return the average angle (in degree) of the wind using the atan2 function
-  double  ArraySin[LengthData];
-  double ArrayCos[LengthData];
-
-  for(int i = 0; i < LengthData; i++)
-  {
-    // Calculate the sin and cosine of all angle
-    ArraySin[i] = sin(double(ArrayData[i]) * 3.14/180.0);
-    ArrayCos[i] = cos(double(ArrayData[i]) * 3.14/180.0);
-  }
-
-  double SumSin;
-  double SumCos;
-  for(int i = 0; i < LengthData; i++)
-  {
-    // calculate the mean of sin(x) and cos(x)
-    SumSin += ArraySin[i];
-    SumCos += ArrayCos[i];
-  }
-  double angle;
-  angle = atan2(SumSin / double(LengthData), SumCos / double(LengthData)) * 180.0/3.14;
-
-  if(angle < 0)
-  { // function atan2 return an angle between -pi and pi, 
-    // so if the angle is negative, add 360° to have a result between 0 and 360°
-    angle += 360;
-  }
-  return(float(angle));
-}
-
-float DewPoint(float Temp, float Humidity)
-{
-  // calculate the dew point using the simplified formula on https://weather.station.software/blog/what-are-dew-and-frost-points/
-  if((Temp < 60) && (Humidity > 0) && (Humidity < 100))
-  {
-    double dewPoint;
-    dewPoint = pow( double(Humidity / 100), double(1 / 8)) * (112 + (0.9 * double(Temp))) + (0.1 * double(Temp)) - 112;
-    return(float(dewPoint));
-  }
-  return(-1);
-}
-
-float IcingPoint(float Temp, float dewPoint)
-{
-  // this function calculate the icing point of water with the temp and the dew point
-  // https://weather.station.software/blog/what-are-dew-and-frost-points/
-  double icingPoint;
-  icingPoint = 2671.02 / ((2954.61/(double(Temp) + 273.15)) + 2.193665*log(double(Temp)+273.15) - 13.3448);
-  icingPoint += (double(dewPoint) + 273.15) - double(Temp + 273.15) - 273.15;
-  return(float(icingPoint));
-}
-
-float WindChill(float Temp, float windSpeed)
-{
-  // calculate the temperature as the body will feel it
-  // Temp in °C
-  // windSpeed in km/h
-  // formula on : https://fr.wikipedia.org/wiki/Refroidissement_%C3%A9olien
-  float tempWindChill;
-  if(windSpeed < 4.8)
-  {
-    tempWindChill = Temp + 0.2 * (0.1345*Temp - 1.59) * windSpeed;
-    return(tempWindChill);
-  }
-  tempWindChill = 13.12 + 0.6215*Temp + (0.3965*Temp - 11.37) * windSpeed;
-  return(tempWindChill);
-}
-
 String getDate() {
   DateTime now = RTC.now();
   int Year = now.year();
@@ -308,13 +221,13 @@ void loop()
     
     // Collection and mean of data before save :
     float DataGroupSave[NumberDataType];
-    DataGroupSave[0] = SumArray(RainGaugeDataSave,NumberDataSave) / 10;
-    DataGroupSave[1] = MeanArrayAngle(WindDirectionDataSave, NumberDataSave); // the function return directly the angle
-    DataGroupSave[2] = MeanArray(WindSpeedDataSave, NumberDataSave) / 10;
-    DataGroupSave[3] = ((MeanArray(TempDataSave, NumberDataSave) / 10) - 40);
-    DataGroupSave[4] = ((MeanArray(TempDHT11DataSave, NumberDataSave) / 10) - 40);
-    DataGroupSave[5] = MeanArray(HumidityDataSave, NumberDataSave); //Humidité
-    DataGroupSave[6] = ((MeanArray(HeatIndexDataSave, NumberDataSave) / 10) - 40);
+    DataGroupSave[0] = sumArray(RainGaugeDataSave,NumberDataSave) / 10;
+    DataGroupSave[1] = meanArrayAngle(WindDirectionDataSave, NumberDataSave); // the function return directly the angle
+    DataGroupSave[2] = meanArray(WindSpeedDataSave, NumberDataSave) / 10;
+    DataGroupSave[3] = ((meanArray(TempDataSave, NumberDataSave) / 10) - 40);
+    DataGroupSave[4] = ((meanArray(TempDHT11DataSave, NumberDataSave) / 10) - 40);
+    DataGroupSave[5] = meanArray(HumidityDataSave, NumberDataSave); //Humidité
+    DataGroupSave[6] = ((meanArray(HeatIndexDataSave, NumberDataSave) / 10) - 40);
 
     // get the date and time of the save
     DateScheduleSave = getDate() + ";" + getHoraireHM() + ";";
