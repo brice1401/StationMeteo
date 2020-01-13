@@ -57,6 +57,8 @@ float heatIndex(float tempC, float humidity)
   heatIndex += 8.5282 * 0.0001 * tempF * humidityDouble * humidityDouble;
   heatIndex += -1.99 * 0.000001 * tempF * tempF * humidityDouble * humidityDouble;
 
+  heatIndex = (heatIndex - 32) * 5 /9; // convert to °C
+  
   return(float(heatIndex));
 }
 
