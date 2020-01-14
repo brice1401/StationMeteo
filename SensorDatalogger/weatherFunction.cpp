@@ -1,5 +1,5 @@
-#include "arduino.h"
-#include <math.h>
+
+
 
 /* Creation of a weatherData class to store data */
 /* This class will be useful for coding/decoding the message send via radio */

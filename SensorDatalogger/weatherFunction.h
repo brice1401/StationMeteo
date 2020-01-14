@@ -1,4 +1,9 @@
+#include <math.h>
 
+#ifndef WeatherData_H
+#define WeatherData_H
+
+#include <Arduino.h>
 /* Creation of a weatherData class to store data */
 /* This class will be useful for coding/decoding the message send via radio */
 
@@ -21,17 +26,18 @@ class WeatherData
     float lightIR;
 
   /* Methods */
-  float getRain();
-  float getWindDir();
-  float getWindSpeed();
-  float getTempDS18();
-  float getTempBME();
-  float getHumidity();
-  float getPressure();
-  float getAltitude();
-  float getLightUV();
-  float getLightVisible();
-  float getLightIR();
+  public :
+    float getRain();
+    float getWindDir();
+    float getWindSpeed();
+    float getTempDS18();
+    float getTempBME();
+    float getHumidity();
+    float getPressure();
+    float getAltitude();
+    float getLightUV();
+    float getLightVisible();
+    float getLightIR();
   
   void setRain(float rain);
   void setWindDir(float windDir);
@@ -55,10 +61,9 @@ class WeatherData
   float windChill(float tempC, float windSpeed);
   float heatIndex(float tempC, float humidity);
   
-  
 };
 
-
+#endif
 // function on array
 float meanArrayAngle(int arrayData[], int lengthData);
 float meanArray(int arrayData[], int lengthData);
