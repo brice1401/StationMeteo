@@ -1,4 +1,24 @@
+#include "arduino.h"
 #include <math.h>
+
+/* Creation of a weatherData class to store data */
+/* This class will be useful for coding/decoding the message send via radio */
+
+
+
+
+
+/* Weather function */
+
+float degreC2F(float tempC)
+{
+  return((tempC * 9 /5) + 32);
+}
+
+float degreF2C(float tempF)
+{
+  return((tempF - 32) * 5 / 9);
+}
 
 float dewPoint(float tempC, float humidity)
 {
@@ -43,7 +63,7 @@ float heatIndex(float tempC, float humidity)
   // calculate the heat index with the tempC and humidity
   // https://en.wikipedia.org/wiki/Heat_index
   
-  double tempF = (double(tempC) * 9 / 5) + 32; //put the tempC in fahrentheit
+  double tempF = double(degreC2F(tempC)); //put the tempC in fahrentheit
   double heatIndex;
   double humidityDouble;
   
@@ -56,10 +76,8 @@ float heatIndex(float tempC, float humidity)
   heatIndex += 1.2287 * 0.001 * tempF * tempF * humidityDouble;
   heatIndex += 8.5282 * 0.0001 * tempF * humidityDouble * humidityDouble;
   heatIndex += -1.99 * 0.000001 * tempF * tempF * humidityDouble * humidityDouble;
-
-  heatIndex = (heatIndex - 32) * 5 /9; // convert to °C
   
-  return(float(heatIndex));
+  return(degreF2C(float(heatIndex))); // convert to °C
 }
 
 long sumArray(int arrayData[], int lengthData)
