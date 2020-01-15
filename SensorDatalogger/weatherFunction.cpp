@@ -1,14 +1,124 @@
 
-
+#include <math.h>
+#include "weatherFunction.h"
 
 /* Creation of a weatherData class to store data */
 /* This class will be useful for coding/decoding the message send via radio */
 
 
 
+/****************************************************/
+/* Function for get and set*/
+/****************************************************/
 
+float WeatherData::getRain()
+{
+  return(rain);
+}
+float WeatherData::getWindDir()
+{
+  return(windDir);
+}
+float WeatherData::getWindSpeed()
+{
+  return(windSpeed);
+}
+float WeatherData::getTempDS18()
+{
+  return(tempDS18);
+}
+float WeatherData::getTempBME()
+{
+  return(tempBME);
+}
+float WeatherData::getHumidity()
+{
+  return(humidity);
+}
+float WeatherData::getPressure()
+{
+  return(pressure);
+}
+float WeatherData::getAltitude()
+{
+  return(altitude);
+}
+float WeatherData::getLightUV()
+{
+  return(lightUV);
+}
+float WeatherData::getLightVisible()
+{
+  return(lightVisible);
+}
+float WeatherData::getLightIR()
+{
+  return(lightIR);  
+}
 
+void WeatherData::setRain(float value)
+{
+  rain = value;
+}
+void WeatherData::setWindDir(float value)
+{
+  windDir = value;
+}
+void WeatherData::setWindSpeed(float value)
+{
+  windSpeed = value;
+}
+void WeatherData::setTempDS18(float value)
+{
+  tempDS18 = value;
+}
+void WeatherData::setTempBME(float value)
+{
+  tempBME = value
+}
+void WeatherData::setHumidity(float value)
+{
+  humidity = value;
+}
+void WeatherData::setPressure(float value)
+{
+  pressure = value;
+}
+void WeatherData::setAltitude(float value)
+{
+  altitude = value;
+}
+void WeatherData::setLightUV(float value)
+{
+  lightUV = value;
+}
+void WeatherData::setLightVisible(float value)
+{
+  lightVisible = value;
+}
+void WeatherData::setLightIR(float value)
+{
+  LightIR = value;
+}
+
+// group some function in order to have more readable code
+void WeatherData::setupRainWind(float rain, float windDir, float windSpeed)
+{
+  
+}
+void WeatherData::setupBME(float temp, float humidity, float pressure, float altitude)
+{
+  
+}
+void WeatherData::setupLight(float lightUV, float lightVisible, float lightIR)
+{
+  
+}
+
+/****************************************************/
 /* Weather function */
+/****************************************************/
+
 
 float degreC2F(float tempC)
 {
@@ -78,50 +188,4 @@ float heatIndex(float tempC, float humidity)
   heatIndex += -1.99 * 0.000001 * tempF * tempF * humidityDouble * humidityDouble;
   
   return(degreF2C(float(heatIndex))); // convert to °C
-}
-
-long sumArray(int arrayData[], int lengthData)
-{
-  //Calculate the sum of all the element of an int Array
-  long sum = 0;
-  for(int i=0; i<lengthData; i++)
-  {
-    sum += arrayData[i];
-  }
-  return(sum);
-}
-
-float meanArray(int arrayData[], int lengthData)
-{
-  long sum = sumArray(arrayData, lengthData);
-  float mean;
-  mean = float(sum) / float(lengthData);
-  return(mean);
-}
-
-float meanArrayAngle(int arrayData[], int lengthData)
-{
-  // This function return the average angle (in degree) of the wind using the atan2 function
-  double sumSin = 0;
-  double sumCos = 0;
-
-  for(int i = 0; i < lengthData; i++)
-  {
-    // Calculate the sin and cosine of all angle and add them to calculate the average value
-    sumSin += sin(double(arrayData[i]) * 3.14/180.0);
-    sumCos += cos(double(arrayData[i]) * 3.14/180.0);
-  }
-
-  sumCos = sumCos / double(lengthData);
-  sumSin = sumSin / double(lengthData);
-  
-  double angle;
-  angle = atan2(sumSin, sumCos) * 180.0/3.14; // atan2(y, x)
-
-  if(angle < 0)
-  { // function atan2 return an angle between -pi and pi, 
-    // so if the angle is negative, add 360° to have a result between 0 and 360°
-    angle += 360;
-  }
-  return(float(angle));
 }
