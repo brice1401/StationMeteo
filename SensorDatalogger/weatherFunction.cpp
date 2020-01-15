@@ -7,126 +7,107 @@
 
 
 
-/****************************************************/
+/*******************************************************************************************************/
 /* Function for get and set*/
-/****************************************************/
+/*******************************************************************************************************/
 
-float WeatherData::getRain()
-{
+float WeatherData::getRain(){
   return(rain);
 }
-float WeatherData::getWindDir()
-{
+float WeatherData::getWindDir(){
   return(windDir);
 }
-float WeatherData::getWindSpeed()
-{
+float WeatherData::getWindSpeed(){
   return(windSpeed);
 }
-float WeatherData::getTempDS18()
-{
+float WeatherData::getTempDS18(){
   return(tempDS18);
 }
-float WeatherData::getTempBME()
-{
+float WeatherData::getTempBME(){
   return(tempBME);
 }
-float WeatherData::getHumidity()
-{
+float WeatherData::getHumidity(){
   return(humidity);
 }
-float WeatherData::getPressure()
-{
+float WeatherData::getPressure(){
   return(pressure);
 }
-float WeatherData::getAltitude()
-{
+float WeatherData::getAltitude(){
   return(altitude);
 }
-float WeatherData::getLightUV()
-{
+float WeatherData::getLightUV(){
   return(lightUV);
 }
-float WeatherData::getLightVisible()
-{
+float WeatherData::getLightVisible(){
   return(lightVisible);
 }
-float WeatherData::getLightIR()
-{
+float WeatherData::getLightIR(){
   return(lightIR);  
 }
 
-void WeatherData::setRain(float value)
-{
+void WeatherData::setRain(float value){
   rain = value;
 }
-void WeatherData::setWindDir(float value)
-{
+void WeatherData::setWindDir(float value){
   windDir = value;
 }
-void WeatherData::setWindSpeed(float value)
-{
+void WeatherData::setWindSpeed(float value){
   windSpeed = value;
 }
-void WeatherData::setTempDS18(float value)
-{
+void WeatherData::setTempDS18(float value){
   tempDS18 = value;
 }
-void WeatherData::setTempBME(float value)
-{
-  tempBME = value
+void WeatherData::setTempBME(float value){
+  tempBME = value;
 }
-void WeatherData::setHumidity(float value)
-{
+void WeatherData::setHumidity(float value){
   humidity = value;
 }
-void WeatherData::setPressure(float value)
-{
+void WeatherData::setPressure(float value){
   pressure = value;
 }
-void WeatherData::setAltitude(float value)
-{
+void WeatherData::setAltitude(float value){
   altitude = value;
 }
-void WeatherData::setLightUV(float value)
-{
+void WeatherData::setLightUV(float value){
   lightUV = value;
 }
-void WeatherData::setLightVisible(float value)
-{
+void WeatherData::setLightVisible(float value){
   lightVisible = value;
 }
-void WeatherData::setLightIR(float value)
-{
-  LightIR = value;
+void WeatherData::setLightIR(float value){
+  lightIR = value;
 }
 
 // group some function in order to have more readable code
-void WeatherData::setupRainWind(float rain, float windDir, float windSpeed)
-{
-  
+void WeatherData::setupRainWind(float rain, float windDir, float windSpeed){
+    setRain(rain);
+    setWindDir(windDir);
+    setWindSpeed(windSpeed);
 }
-void WeatherData::setupBME(float temp, float humidity, float pressure, float altitude)
-{
-  
+void WeatherData::setupBME(float temp, float humidity, float pressure, float altitude){
+    setTempBME(temp);
+    setHumidity(humidity);
+    setPressure(pressure);
+    setAltitude(altitude);
+
 }
-void WeatherData::setupLight(float lightUV, float lightVisible, float lightIR)
-{
-  
+void WeatherData::setupLight(float lightUV, float lightVisible, float lightIR){
+    setLightUV(lightUV);
+    setLightVisible(lightVisible);
+    setLightIR(lightIR);
 }
 
-/****************************************************/
-/* Weather function */
-/****************************************************/
+/*******************************************************************************************************/
+/* Weather function for temperature index */
+/*******************************************************************************************************/
 
 
-float degreC2F(float tempC)
-{
+float degreC2F(float tempC){
   return((tempC * 9 /5) + 32);
 }
 
-float degreF2C(float tempF)
-{
+float degreF2C(float tempF){
   return((tempF - 32) * 5 / 9);
 }
 
@@ -188,4 +169,25 @@ float heatIndex(float tempC, float humidity)
   heatIndex += -1.99 * 0.000001 * tempF * tempF * humidityDouble * humidityDouble;
   
   return(degreF2C(float(heatIndex))); // convert to °C
+}
+
+
+/*******************************************************************************************************/
+/* Function for radio message */
+/*******************************************************************************************************/
+
+void int2Buff(char*& message, int value, int start)
+{
+  // this fonction write the value in 4 byte starting at start
+  message[start] = value & 0xff;
+  message[start + 1] = (value >> 8) & 0xff;
+  message[start + 2] = (value >> 16) & 0xff;
+  message[start + 3] = (value >> 24) & 0xff;
+}
+
+void int2Buff(char*& message, int value, int start)
+{
+  int value;
+  value = (int)(message[start] << 24 | message[start + 1] << 16 | message[start + 2] << 8 | message[start + 3]);
+  return(value);
 }

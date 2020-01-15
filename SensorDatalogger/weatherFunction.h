@@ -70,8 +70,8 @@ class WeatherData
     float heatIndex(float tempC, float humidity);
 
     // function to create the message for the radio
-    void int2Buff(char*& message, int start, int end);
-    void int2Buff(char*& message, int value, int start, int end);
+    void int2Buff(char*& message, int value, int start);
+    void buff2Int(char* message, int start);
   
 };
 
