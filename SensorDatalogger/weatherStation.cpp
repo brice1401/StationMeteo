@@ -1,6 +1,6 @@
 
 #include <math.h>
-#include "weatherFunction.h"
+#include "weatherStation.h"
 
 /* Creation of a WeatherStation class to store data */
 /* This class will be useful for coding/decoding the message send via radio */
@@ -11,109 +11,132 @@
 /* Function for get and set*/
 /*******************************************************************************************************/
 
-float WeatherStation::getRain(){
-  return(rain);
+float WeatherStation::getRain() {
+  return (rain);
 }
-float WeatherStation::getWindDir(){
-  return(windDir);
+float WeatherStation::getWindDir() {
+  return (windDir);
 }
-float WeatherStation::getWindSpeed(){
-  return(windSpeed);
+float WeatherStation::getWindSpeed() {
+  return (windSpeed);
 }
-float WeatherStation::getTempDS18(){
-  return(tempDS18);
+float WeatherStation::getTempDS18() {
+  return (tempDS18);
 }
-float WeatherStation::getTempBME(){
-  return(tempBME);
+float WeatherStation::getTempBME() {
+  return (tempBME);
 }
-float WeatherStation::getHumidity(){
-  return(humidity);
+float WeatherStation::getHumidity() {
+  return (humidity);
 }
-float WeatherStation::getPressure(){
-  return(pressure);
+float WeatherStation::getPressure() {
+  return (pressure);
 }
-float WeatherStation::getAltitude(){
-  return(altitude);
+float WeatherStation::getAltitude() {
+  return (altitude);
 }
-float WeatherStation::getLightUV(){
-  return(lightUV);
+float WeatherStation::getLightUV() {
+  return (lightUV);
 }
-float WeatherStation::getLightVisible(){
-  return(lightVisible);
+float WeatherStation::getLightVisible() {
+  return (lightVisible);
 }
-float WeatherStation::getLightIR(){
-  return(lightIR);  
+float WeatherStation::getLightIR() {
+  return (lightIR);
 }
-float WeatherStation::getBatteryVoltage(){
-  return(batteryVoltage);
+float WeatherStation::getBatteryVoltage() {
+  return (batteryVoltage);
 }
-float WeatherStation::getBatteryTemp(){
-  return(batteryTemp);
+float WeatherStation::getBatteryTemp() {
+  return (batteryTemp);
 }
 
-void WeatherStation::setRain(float value){
+void WeatherStation::setRain(float value) {
   rain = value;
 }
-void WeatherStation::setWindDir(float value){
+void WeatherStation::setWindDir(float value) {
   windDir = value;
 }
-void WeatherStation::setWindSpeed(float value){
+void WeatherStation::setWindSpeed(float value) {
   windSpeed = value;
 }
-void WeatherStation::setTempDS18(float value){
+void WeatherStation::setTempDS18(float value) {
   tempDS18 = value;
 }
-void WeatherStation::setTempBME(float value){
+void WeatherStation::setTempBME(float value) {
   tempBME = value;
 }
-void WeatherStation::setHumidity(float value){
+void WeatherStation::setHumidity(float value) {
   humidity = value;
 }
-void WeatherStation::setPressure(float value){
+void WeatherStation::setPressure(float value) {
   pressure = value;
 }
-void WeatherStation::setAltitude(float value){
+void WeatherStation::setAltitude(float value) {
   altitude = value;
 }
-void WeatherStation::setLightUV(float value){
+void WeatherStation::setLightUV(float value) {
   lightUV = value;
 }
-void WeatherStation::setLightVisible(float value){
+void WeatherStation::setLightVisible(float value) {
   lightVisible = value;
 }
-void WeatherStation::setLightIR(float value){
+void WeatherStation::setLightIR(float value) {
   lightIR = value;
 }
-void WeatherStation::setBatteryVoltage(float value){
+void WeatherStation::setBatteryVoltage(float value) {
   batteryVoltage = value;
 }
-void WeatherStation::setBatteryTemp(float value){
+void WeatherStation::setBatteryTemp(float value) {
   batteryTemp = value;
 }
 
-/* 
- *  group some function in order to have more readable code
- */
-void WeatherStation::setupRainWind(float rain, float windDir, float windSpeed){
-    setRain(rain);
-    setWindDir(windDir);
-    setWindSpeed(windSpeed);
+/*
+    group some function in order to have more readable code
+*/
+void WeatherStation::setupRainWind(float rain, float windDir, float windSpeed) {
+  setRain(rain);
+  setWindDir(windDir);
+  setWindSpeed(windSpeed);
 }
-void WeatherStation::setupBME(float temp, float humidity, float pressure, float altitude){
-    setTempBME(temp);
-    setHumidity(humidity);
-    setPressure(pressure);
-    setAltitude(altitude);
+void WeatherStation::setupBME(float temp, float humidity, float pressure, float altitude) {
+  setTempBME(temp);
+  setHumidity(humidity);
+  setPressure(pressure);
+  setAltitude(altitude);
 
 }
-void WeatherStation::setupLight(float lightUV, float lightVisible, float lightIR){
-    setLightUV(lightUV);
-    setLightVisible(lightVisible);
-    setLightIR(lightIR);
+void WeatherStation::setupLight(float lightUV, float lightVisible, float lightIR) {
+  setLightUV(lightUV);
+  setLightVisible(lightVisible);
+  setLightIR(lightIR);
 }
-void WeatherStation::setupBattery(float batteryVoltage, float batteryTemp){
+void WeatherStation::setupBattery(float batteryVoltage, float batteryTemp) {
   setBatteryVoltage(batteryVoltage);
   setBatteryTemp(batteryTemp);
+}
+
+/*******************************************************************************************************/
+/* Constructor and destructor */
+/*******************************************************************************************************/
+
+WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS18,
+                               byte batteryVoltage, byte batteryTemp)
+{
+  /* constructor
+      init the connexion pin of the weather station
+  */
+  pinRain = rain;
+  pinWindDir = windDir;
+  pinWindSpeed = windSpeed;
+  pinDS18 = DS18;
+  pinWindSpeed = windSpeed;
+  pinBatteryVoltage = batteryVoltage;
+  pinBatteryTemp = batteryTemp;
+}
+
+WeatherStation::~WeatherStation() {
+
 }
 
 /*******************************************************************************************************/
@@ -126,15 +149,15 @@ void WeatherStation::value2Buff(float value, int start, byte tempTest = false)
   // then write the value in the 4 byte starting at start
 
   int valueInt;
-  if(tempTest){
+  if (tempTest) {
     // if it's a temp value, add an offset of +40°C to avoid negative number then multiply by 10
-    valueInt = int(roundf(((value + 40) * 10))); 
+    valueInt = int(roundf(((value + 40) * 10)));
   }
   else
   { // else only multiply by 10 to keep one digit
     valueInt = int(roundf(value * 10));
   }
-  
+
   radioBuffer[start] = valueInt & 0xff;
   radioBuffer[start + 1] = (valueInt >> 8) & 0xff;
   radioBuffer[start + 2] = (valueInt >> 16) & 0xff;
@@ -151,16 +174,16 @@ float WeatherStation::buff2Value(int start, byte tempTest = false)
   valueInt = (int)(byte1 << 24 | byte2 << 16 | byte3 << 8 | byte4);
 
   float value;
-  if(tempTest){
+  if (tempTest) {
     // if it's a temp value, divise by 10 then remove the +40°C offset
-    value = (float(valueInt) / 10) - 40; 
+    value = (float(valueInt) / 10) - 40;
   }
   else
   { // else only divise by 10
     value = float(valueInt) / 10;
   }
-  
-  return(value);
+
+  return (value);
 }
 
 void WeatherStation::codingMessage()
@@ -190,7 +213,7 @@ void WeatherStation::decodingMessage()
   tempBME = buff2Value(16, true);
   humidity = buff2Value(20);
   pressure = buff2Value(24);
-  altitude= buff2Value(28);
+  altitude = buff2Value(28);
   lightUV = buff2Value(32);
   lightVisible = buff2Value(36);
   lightIR = buff2Value(40);
@@ -198,11 +221,11 @@ void WeatherStation::decodingMessage()
   batteryTemp = buff2Value(56);
 }
 
-void WeatherStation::setRadioBufferReceive(char* message){
+void WeatherStation::setRadioBufferReceive(char* message) {
   // this function write the message received into the radio buffer of the class
   // after, only a call to decodingMessage will be enough
 
-  for(int i=0; i < 62; i++)
+  for (int i = 0; i < 62; i++)
   {
     radioBuffer[i] = message[i];
   }
@@ -215,9 +238,9 @@ void WeatherStation::setRadioBufferReceive(char* message){
 float voltageBattery()
 {
   /* this fonction return the voltage of the battery
-   *  it uses an approximation to mesure it */
+      it uses an approximation to mesure it */
 
-   
+
 }
 
 
@@ -246,11 +269,11 @@ float getTempBattery(int readingThermistor)
   float B = 2.53917 * 0.0001; // B = 2,539167E-04
   float tempBattery;
 
-  Rt = (R1 * 1) / ((Vin/Vout)-1);
+  Rt = (R1 * 1) / ((Vin / Vout) - 1);
 
-  tempBattery = 1/(A + B * float(log(Rt)));
-  
-  return(tempBattery);
+  tempBattery = 1 / (A + B * float(log(Rt)));
+
+  return (tempBattery);
 }
 
 
@@ -259,25 +282,25 @@ float getTempBattery(int readingThermistor)
 /*******************************************************************************************************/
 
 
-float degreC2F(float tempC){
-  return((tempC * 9 /5) + 32);
+float degreC2F(float tempC) {
+  return ((tempC * 9 / 5) + 32);
 }
 
-float degreF2C(float tempF){
-  return((tempF - 32) * 5 / 9);
+float degreF2C(float tempF) {
+  return ((tempF - 32) * 5 / 9);
 }
 
 float dewPoint(float tempC, float humidity)
 {
   // calculate the dew point using the simplified formula on :
   // https://weather.station.software/blog/what-are-dew-and-frost-points/
-  if((tempC < 60) && (humidity > 0) && (humidity < 100))
+  if ((tempC < 60) && (humidity > 0) && (humidity < 100))
   {
     double dewPoint;
     dewPoint = pow( double(humidity / 100), double(1 / 8)) * (112 + (0.9 * double(tempC))) + (0.1 * double(tempC)) - 112;
-    return(float(dewPoint));
+    return (float(dewPoint));
   }
-  return(-1);
+  return (-1);
 }
 
 float icingPoint(float tempC, float dewPoint)
@@ -285,9 +308,9 @@ float icingPoint(float tempC, float dewPoint)
   // this function calculate the icing point of water with the tempC and the dew point
   // https://weather.station.software/blog/what-are-dew-and-frost-points/
   double icingPoint;
-  icingPoint = 2671.02 / ((2954.61/(double(tempC) + 273.15)) + 2.193665*log(double(tempC)+273.15) - 13.3448);
+  icingPoint = 2671.02 / ((2954.61 / (double(tempC) + 273.15)) + 2.193665 * log(double(tempC) + 273.15) - 13.3448);
   icingPoint += (double(dewPoint) + 273.15) - double(tempC + 273.15) - 273.15;
-  return(float(icingPoint));
+  return (float(icingPoint));
 }
 
 float windChill(float tempC, float windSpeed)
@@ -297,24 +320,24 @@ float windChill(float tempC, float windSpeed)
   // windSpeed in km/h
   // formula on : https://fr.wikipedia.org/wiki/Refroidissement_%C3%A9olien
   float tempWindChill;
-  if(windSpeed < 4.8)
+  if (windSpeed < 4.8)
   {
-    tempWindChill = tempC + 0.2 * (0.1345*tempC - 1.59) * windSpeed;
-    return(tempWindChill);
+    tempWindChill = tempC + 0.2 * (0.1345 * tempC - 1.59) * windSpeed;
+    return (tempWindChill);
   }
-  tempWindChill = 13.12 + 0.6215*tempC + (0.3965*tempC - 11.37) * windSpeed;
-  return(tempWindChill);
+  tempWindChill = 13.12 + 0.6215 * tempC + (0.3965 * tempC - 11.37) * windSpeed;
+  return (tempWindChill);
 }
 
 float heatIndex(float tempC, float humidity)
 {
   // calculate the heat index with the tempC and humidity
   // https://en.wikipedia.org/wiki/Heat_index
-  
+
   double tempF = double(degreC2F(tempC)); //put the tempC in fahrentheit
   double heatIndex;
   double humidityDouble;
-  
+
   heatIndex = -42.379;
   heatIndex += 2.0490 * tempF;
   heatIndex += 10.1433 * humidityDouble;
@@ -324,6 +347,6 @@ float heatIndex(float tempC, float humidity)
   heatIndex += 1.2287 * 0.001 * tempF * tempF * humidityDouble;
   heatIndex += 8.5282 * 0.0001 * tempF * humidityDouble * humidityDouble;
   heatIndex += -1.99 * 0.000001 * tempF * tempF * humidityDouble * humidityDouble;
-  
-  return(degreF2C(float(heatIndex))); // convert to °C
+
+  return (degreF2C(float(heatIndex))); // convert to °C
 }

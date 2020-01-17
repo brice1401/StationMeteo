@@ -6,7 +6,7 @@
 #include <RTClib.h>
 #include "DHT.h"
 #include <math.h>
-#include "weatherFunction.h"
+#include "weatherStation.h"
 
 
 

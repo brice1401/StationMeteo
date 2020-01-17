@@ -12,8 +12,9 @@ class WeatherStation
 // https://playground.arduino.cc/Code/Library/
 {
 
-  /* data on weather */
+  /* Attributes */
   private :
+    /* data on weather */
     float rain;
     float windDir;
     float windSpeed;
@@ -28,11 +29,25 @@ class WeatherStation
     float batteryVoltage;
     float batteryTemp;
 
+    /* data for the pin of sensors */
+    byte pinWindDir;
+    byte pinBatteryTemp;
+    byte pinBatteryVoltage;
+    byte pinRain;
+    byte pinDS18;
+    byte pinWindSpeed;
+    
   public :
     char* radioBuffer[62];
 
   /* Methods */
   public :
+    /* Constructor and destructor */
+    WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS18, 
+                   byte batteryVoltage, byte batteryTemp);
+    ~WeatherStation();
+
+    /* get and set methods */
     float getRain();
     float getWindDir();
     float getWindSpeed();
