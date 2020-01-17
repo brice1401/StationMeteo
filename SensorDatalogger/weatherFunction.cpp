@@ -144,7 +144,11 @@ void WeatherStation::value2Buff(float value, int start, byte tempTest = false)
 float WeatherStation::buff2Value(int start, byte tempTest = false)
 {
   int valueInt;
-  valueInt = (int)(radioBuffer[start] << 24 | radioBuffer[start + 1] << 16 | radioBuffer[start + 2] << 8 | radioBuffer[start + 3]);
+  byte byte1 = radioBuffer[start]; // compter de gauche à droite
+  byte byte2 = radioBuffer[start + 1];
+  byte byte3 = radioBuffer[start + 2];
+  byte byte4 = radioBuffer[start] + 3;
+  valueInt = (int)(byte1 << 24 | byte2 << 16 | byte3 << 8 | byte4);
 
   float value;
   if(tempTest){
@@ -177,7 +181,7 @@ void WeatherStation::codingMessage()
   value2Buff(batteryTemp, 56, true);
 }
 
-void WeatherStation::decodingMessage(char* message)
+void WeatherStation::decodingMessage()
 {
   rain = buff2Value(0);
   windDir = buff2Value(4);
@@ -190,9 +194,18 @@ void WeatherStation::decodingMessage(char* message)
   lightUV = buff2Value(32);
   lightVisible = buff2Value(36);
   lightIR = buff2Value(40);
-  
   batteryVoltage = buff2Value(52);
   batteryTemp = buff2Value(56);
+}
+
+void WeatherStation::setRadioBufferReceive(char* message){
+  // this function write the message received into the radio buffer of the class
+  // after, only a call to decodingMessage will be enough
+
+  for(int i=0; i < 62; i++)
+  {
+    radioBuffer[i] = message[i];
+  }
 }
 
 /*******************************************************************************************************/

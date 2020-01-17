@@ -84,7 +84,8 @@ class WeatherStation
      *  buffer
      */
     void codingMessage();
-    float decodingMessage(char* message);
+    void decodingMessage();
+    void setRadioBufferReceive(char* message);
 
     /*
      * function to gather information n the battery
