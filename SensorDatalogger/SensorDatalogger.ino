@@ -10,6 +10,7 @@
 
 
 
+WeatherStation MaStationMeteo;
 
 //Definition des variables
 //float RainGauge = 0; //level of water fell, in mm

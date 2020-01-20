@@ -1,11 +1,65 @@
 
 #include <math.h>
 #include "weatherStation.h"
+#include <SPI.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+#include "Adafruit_SI1145.h"
 
 /* Creation of a WeatherStation class to store data */
 /* This class will be useful for coding/decoding the message send via radio */
 
+/*******************************************************************************************************/
+/* Constructor and destructor */
+/*******************************************************************************************************/
 
+WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS18,
+                               byte batteryVoltage, byte batteryTemp)
+{
+  /* constructor for the sensor
+   * init the connexion pin of the weather station 
+   * and init the connexion to the sensor
+   */
+  pinRain = rain;
+  pinWindDir = windDir;
+  pinWindSpeed = windSpeed;
+  pinDS18 = DS18;
+  pinBatteryVoltage = batteryVoltage;
+  pinBatteryTemp = batteryTemp;
+
+
+  /*
+   * Init all the pin of I/O
+   * and activate the library of all the sensor
+   */
+
+  pinMode(pinRain, INPUT);
+  pinMode(pinWindDir, INPUT);
+  pinMode(pinWindSpeed, INPUT);
+  pinMode(pinDS18, INPUT);
+  pinMode(pinBatteryVoltage, INPUT);
+  pinMode(pinBatteryTemp, INPUT);
+  
+  // init of temp sensor with oneWire communication
+  OneWire oneWire(pinDS18);
+  DallasTemperature sensorDS18B20(&oneWire);
+  DeviceAddress sensorDeviceAddress;
+   
+}
+
+WeatherStation::WeatherStation()
+{
+  /* 
+   * constructor for the receptor 
+   */
+
+}
+
+WeatherStation::~WeatherStation() {
+
+}
 
 /*******************************************************************************************************/
 /* Function for get and set*/
@@ -92,8 +146,8 @@ void WeatherStation::setBatteryTemp(float value) {
 }
 
 /*
-    group some function in order to have more readable code
-*/
+ * group some function in order to have more readable code
+ */
 void WeatherStation::setupRainWind(float rain, float windDir, float windSpeed) {
   setRain(rain);
   setWindDir(windDir);
@@ -116,27 +170,30 @@ void WeatherStation::setupBattery(float batteryVoltage, float batteryTemp) {
   setBatteryTemp(batteryTemp);
 }
 
+
 /*******************************************************************************************************/
-/* Constructor and destructor */
+/*
+ * Function for sensor reading
+ */
 /*******************************************************************************************************/
 
-WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS18,
-                               byte batteryVoltage, byte batteryTemp)
+float WeatherStation::getTempDS18B20()
 {
-  /* constructor
-      init the connexion pin of the weather station
-  */
-  pinRain = rain;
-  pinWindDir = windDir;
-  pinWindSpeed = windSpeed;
-  pinDS18 = DS18;
-  pinWindSpeed = windSpeed;
-  pinBatteryVoltage = batteryVoltage;
-  pinBatteryTemp = batteryTemp;
+  //get the temperature of the DS18B20 Temp sensor
+  //Only ask for the sensor on index 0 of the OneWire Bus
+  sensorDS18B20.requestTemperatures();
+  float Tempetrature = sensorDS18B20.getTempCByIndex(0);
+  return(Tempetrature);
 }
 
-WeatherStation::~WeatherStation() {
+void WeatherStation::sensorReading()
+{
+  /*
+   * this fonction read the value from all the sensors
+   * write the value inside the attribut of an object of the class
+   */
 
+   
 }
 
 /*******************************************************************************************************/
@@ -325,7 +382,7 @@ float windChill(float tempC, float windSpeed)
     tempWindChill = tempC + 0.2 * (0.1345 * tempC - 1.59) * windSpeed;
     return (tempWindChill);
   }
-  tempWindChill = 13.12 + 0.6215 * tempC + (0.3965 * tempC - 11.37) * windSpeed;
+  tempWindChill = 13.12 + 0.6215 * tempC + (0.3965 * tempC - 11.37) * float(pow(double(windSpeed), 0.16));
   return (tempWindChill);
 }
 

@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include <math.h>
+
+
 /* Creation of a WeatherStation class to store data 
  * This class will be useful for coding/decoding the message send via radio
  */
@@ -44,7 +46,8 @@ class WeatherStation
   public :
     /* Constructor and destructor */
     WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS18, 
-                   byte batteryVoltage, byte batteryTemp);
+                   byte batteryVoltage, byte batteryTemp); // constructor for the sensor card
+    WeatherStation::WeatherStation(); // constructor for the receptor
     ~WeatherStation();
 
     /* get and set methods */
@@ -103,16 +106,25 @@ class WeatherStation
     void setRadioBufferReceive(char* message);
 
     /*
-     * function to gather information n the battery
+     * function to gather information from the battery
      */
     float voltageBattery();
     float tempBattery(int readingThermistor);
+
+    /*
+     * fonction to get the sensor value
+     */
+     float getTempDS18B20(); // get the temp from the DS18B20 temp sensor
+     void sensorReading(); // collect the data on all the sensor and write them in the attribut
 };
 
 #endif
 
 
-// function to calculate weather index
+/*
+ * function to calculate weather index
+ */
+ 
 float degreC2F(float tempC);
 float degreF2C(float tempF);
 float dewPoint(float tempC, float humidity);
