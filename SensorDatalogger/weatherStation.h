@@ -1,8 +1,15 @@
-#ifndef WeatherStation_H
-#define WeatherStation_H
-
+#include <SPI.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+#include "Adafruit_SI1145.h"
 #include <Arduino.h>
 #include <math.h>
+
+
+#ifndef WeatherStation_H
+#define WeatherStation_H
 
 
 /* Creation of a WeatherStation class to store data 
@@ -38,6 +45,15 @@ class WeatherStation
     byte pinRain;
     byte pinDS18;
     byte pinWindSpeed;
+
+    /* for the function */
+    int seaLevelPressure;
+
+    /* Sensors object */
+    DallasTemperature sensorDS18B20;
+    Adafruit_BME280 bme;
+    Adafruit_SI1145 uv;
+    
     
   public :
     char* radioBuffer[62];
@@ -108,14 +124,33 @@ class WeatherStation
     /*
      * function to gather information from the battery
      */
-    float voltageBattery();
-    float tempBattery(int readingThermistor);
+    
 
     /*
-     * fonction to get the sensor value
+     * fonction to get the sensor value (and batterie)
      */
-     float getTempDS18B20(); // get the temp from the DS18B20 temp sensor
-     void sensorReading(); // collect the data on all the sensor and write them in the attribut
+    float measureRainGauge();
+    float measureWindDir(); // return the angle of the wind
+    float measureWindSpeed();
+    float measureTempDS18B20(); // get the temp from the DS18B20 temp sensor
+    float measureTempBME();
+    float measureHumidity();
+    float measurePressure();
+    float measureAltitude();
+    float measureLightUV();
+    float measureLightVisible();
+    float measureLightIR();
+    float measureVoltageBattery();
+    float measureTempBattery();
+    
+    void sensorReading(); // collect the data on all the sensor and write them in the attribut
+
+
+    /*
+     * function to test the component
+     */
+    bool testSensorBME();
+    bool testSensorLight();
 };
 
 #endif

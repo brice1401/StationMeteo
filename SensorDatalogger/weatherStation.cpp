@@ -46,6 +46,12 @@ WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS1
   OneWire oneWire(pinDS18);
   DallasTemperature sensorDS18B20(&oneWire);
   DeviceAddress sensorDeviceAddress;
+
+  // init the BME sensor
+  bme.begin();
+  // init the UV sensor
+  uv = Adafruit_SI1145();
+  uv.begin()
    
 }
 
@@ -177,7 +183,49 @@ void WeatherStation::setupBattery(float batteryVoltage, float batteryTemp) {
  */
 /*******************************************************************************************************/
 
-float WeatherStation::getTempDS18B20()
+float WeatherStation::measureWindSpeed()
+{
+  //Return the speed of the wind in km/h
+  float deltaTime = millis() - LastWindCheck; //time between two check of wind speed (always < 3min)
+  deltaTime /= 1000.0; //convert to s
+
+  float WindSpeed = float(WindSpeedClick) / deltaTime; //frequency of click
+  WindSpeedClick = 0; //init the counter
+  LastWindCheck = millis();
+  WindSpeed *= 2.4;
+
+  return (WindSpeed);
+}
+float WeatherStation::measureRainGauge()
+{
+  // return the rain fell
+  float RainGaugeInter = float(RainClick) * 0.28;
+  RainClick = 0; // set the rain fall to 0
+  return(RainGaugeInter);
+}
+float WeatherStation::measureWindDir()
+{
+  //return the angle forme between the wind and north (north = 0°)
+  float WindAnalog = averageAnalogRead(pinWindDir);
+  
+  if (WindAnalog < 76) return(112.5);
+  if (WindAnalog < 91) return(67.5);
+  if (WindAnalog < 113) return(90);
+  if (WindAnalog < 161) return(157.5);
+  if (WindAnalog < 221) return(135);
+  if (WindAnalog < 274) return(202.5);
+  if (WindAnalog < 359) return(180);
+  if (WindAnalog < 451) return(22.5);
+  if (WindAnalog < 551) return(45);
+  if (WindAnalog < 639) return(247.5);
+  if (WindAnalog < 693) return(225);
+  if (WindAnalog < 774) return(337.5);
+  if (WindAnalog < 839) return(0);
+  if (WindAnalog < 891) return(292.5);
+  if (WindAnalog < 951) return(315);
+  if (WindAnalog < 1023) return(270);
+}
+float WeatherStation::measureTempDS18B20()
 {
   //get the temperature of the DS18B20 Temp sensor
   //Only ask for the sensor on index 0 of the OneWire Bus
@@ -185,6 +233,74 @@ float WeatherStation::getTempDS18B20()
   float Tempetrature = sensorDS18B20.getTempCByIndex(0);
   return(Tempetrature);
 }
+float WeatherStation::measureTempBME()
+{
+  return(float(bme.readTemperature()))
+}
+float WeatherStation::measureHumidity()
+{
+  return(float(bme.readHumidity()));
+}
+float WeatherStation::measurePressure()
+{
+  return(float(bme.readPressure()));
+}
+float WeatherStation::measureAltitude(int seaLevelPres = 101325;)
+{
+  return(float(bme.readAltitude(seaLevelPres))); 
+}
+float WeatherStation::measureLightUV()
+{// return the UV index
+  return(uv.readUV()/100);
+}
+float WeatherStation::measureLightVisible()
+{
+  return(uv.readVisible());
+}
+float WeatherStation::measureLightIR()
+{
+  return(uv.readIR());
+}
+float WeatherStation::measureVoltageBattery()
+{
+  /* this fonction return the voltage of the battery
+      it uses an approximation to mesure it */
+
+
+}
+float WeatherStation::measureTempBattery()
+{
+  // this function take an int corresponding of the value of reading of the thermistor
+  // the correlation is make with the equation on :
+  // https://en.wikipedia.org/wiki/Thermistor
+  // it use only the parameter A and B, linearity between 1/T and ln(R)
+  // 1/T = A + b*ln(R)
+
+  // It use a voltage divider
+  // https://en.wikipedia.org/wiki/Voltage_divider
+  // Z1 = 10kohm
+  // Z2 is the thermistor
+  // Vin = 5V
+  // Vout = readingThermistor
+
+  int readingThermistor = analogRead(pinTempBattery); // get the value of the pin  
+  float R1 = 10000; // resistor of the divisor tension to readthe
+  float Vin = 5;
+  float Rt; // value of reisitivity of the thermistor
+  float Vout = float(readingThermistor) * 5 / 1023;
+  // coefficient for the temp
+  float A = 2.79161 * 0.001; // A = 2,791610E-03
+
+  float B = 2.53917 * 0.0001; // B = 2,539167E-04
+  float tempBattery;
+
+  Rt = R1 / ((Vin / Vout) - 1);
+
+  tempBattery = 1 / (A + B * float(log(Rt)));
+
+  return (tempBattery);
+}
+
 
 void WeatherStation::sensorReading()
 {
@@ -278,7 +394,8 @@ void WeatherStation::decodingMessage()
   batteryTemp = buff2Value(56);
 }
 
-void WeatherStation::setRadioBufferReceive(char* message) {
+void WeatherStation::setRadioBufferReceive(char* message)
+{
   // this function write the message received into the radio buffer of the class
   // after, only a call to decodingMessage will be enough
 
@@ -288,50 +405,6 @@ void WeatherStation::setRadioBufferReceive(char* message) {
   }
 }
 
-/*******************************************************************************************************/
-/* Function for the battery */
-/*******************************************************************************************************/
-
-float voltageBattery()
-{
-  /* this fonction return the voltage of the battery
-      it uses an approximation to mesure it */
-
-
-}
-
-
-float getTempBattery(int readingThermistor)
-{
-  // this function take an int corresponding of the value of reading of the thermistor
-  // the correlation is make with the equation on :
-  // https://en.wikipedia.org/wiki/Thermistor
-  // it use only the parameter A and B, linearity between 1/T and ln(R)
-  // 1/T = A + b*ln(R)
-
-  // It use a voltage divider
-  // https://en.wikipedia.org/wiki/Voltage_divider
-  // Z1 = 10kohm
-  // Z2 is the thermistor
-  // Vin = 5V
-  // Vout = readingThermistor
-
-  float R1 = 10000; // resistor of the divisor tension to readthe
-  float Vin = 5;
-  float Rt; // value of reisitivity of the thermistor
-  float Vout = float(readingThermistor) * 5 / 1023;
-  // coefficient for the temp
-  float A = 2.79161 * 0.001; // A = 2,791610E-03
-
-  float B = 2.53917 * 0.0001; // B = 2,539167E-04
-  float tempBattery;
-
-  Rt = (R1 * 1) / ((Vin / Vout) - 1);
-
-  tempBattery = 1 / (A + B * float(log(Rt)));
-
-  return (tempBattery);
-}
 
 
 /*******************************************************************************************************/
