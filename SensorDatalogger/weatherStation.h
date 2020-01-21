@@ -55,11 +55,13 @@ class WeatherStation
     Adafruit_SI1145 uv;
     
     /* attribute for the sensor function */
-    volatile long LastWindSpeed = 0;
-    volatile unsigned long LastRain = 0;
-    volatile unsigned int WindSpeedClick = 0;
-    volatile unsigned byte RainClick = 0; //use a byte to avoid problem went executing the 
-    long LastWindCheck = 0;    
+    volatile long LastWindSpeed;
+    volatile unsigned long LastRain;
+    volatile unsigned int WindSpeedClick;
+    volatile byte RainClick; //use a byte to avoid problem went executing the interrupt
+    long LastWindCheck;
+
+    int seaLevelPres; // pressure at the sea level to calculate the altitude
 
     
   public :
@@ -179,3 +181,5 @@ float dewPoint(float tempC, float humidity);
 float icingPoint(float tempC, float dewPoint);
 float windChill(float tempC, float windSpeed);
 float heatIndex(float tempC, float humidity);
+
+int averageAnalogRead(int pinToRead);

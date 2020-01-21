@@ -314,6 +314,7 @@ float getTemperature()
 
 //Takes an average of readings on a given pin
 //Returns the average
+/*
 int averageAnalogRead(int pinToRead)
 {
   byte numberOfReadings = 8;
@@ -325,6 +326,7 @@ int averageAnalogRead(int pinToRead)
 
   return(runningValue);
 }
+*/
 
 long sumArray(int arrayData[], int lengthData)
 {

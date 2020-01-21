@@ -51,8 +51,16 @@ WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS1
   bme.begin();
   // init the UV sensor
   uv = Adafruit_SI1145();
-  uv.begin()
-   
+  uv.begin();
+
+  // init the attribute
+  LastWindSpeed = 0;
+  LastRain = 0;
+  WindSpeedClick = 0;
+  RainClick = 0;
+  LastWindCheck = 0;
+
+  seaLevelPres = 101325;
 }
 
 WeatherStation::WeatherStation()
@@ -184,7 +192,7 @@ void WeatherStation::setupBattery(float batteryVoltage, float batteryTemp) {
 /*******************************************************************************************************/
 
 // Interrrupt
-void interruptRainGauge()
+void WeatherStation::interruptRainGauge()
 {
   if ((millis() - LastRain) > 20)
   {
@@ -193,7 +201,7 @@ void interruptRainGauge()
   }
 }
 
-void interruptWindSpeed()
+void WeatherStation::interruptWindSpeed()
 {
   if ((millis() - LastWindSpeed) > 10)
   {
@@ -258,7 +266,7 @@ float WeatherStation::measureTempDS18B20()
 
 float WeatherStation::measureTempBME()
 {
-  return(float(bme.readTemperature()))
+  return(float(bme.readTemperature()));
 }
 
 float WeatherStation::measureHumidity()
@@ -271,7 +279,7 @@ float WeatherStation::measurePressure()
   return(float(bme.readPressure()));
 }
 
-float WeatherStation::measureAltitude(int seaLevelPres = 101325;)
+float WeatherStation::measureAltitude()
 {
   return(float(bme.readAltitude(seaLevelPres))); 
 }
@@ -314,7 +322,7 @@ float WeatherStation::measureTempBattery()
   // Vin = 5V
   // Vout = readingThermistor
 
-  int readingThermistor = analogRead(pinTempBattery); // get the value of the pin  
+  int readingThermistor = analogRead(pinBatteryTemp); // get the value of the pin  
   float R1 = 10000; // resistor of the divisor tension to readthe
   float Vin = 5;
   float Rt; // value of reisitivity of the thermistor
@@ -510,4 +518,16 @@ float heatIndex(float tempC, float humidity)
   heatIndex += -1.99 * 0.000001 * tempF * tempF * humidityDouble * humidityDouble;
 
   return (degreF2C(float(heatIndex))); // convert to °C
+}
+
+int averageAnalogRead(int pinToRead)
+{
+  byte numberOfReadings = 8;
+  unsigned int runningValue = 0;
+
+  for(int x = 0 ; x < numberOfReadings ; x++)
+    runningValue += analogRead(pinToRead);
+  runningValue /= numberOfReadings;
+
+  return(runningValue);
 }
