@@ -54,6 +54,13 @@ class WeatherStation
     Adafruit_BME280 bme;
     Adafruit_SI1145 uv;
     
+    /* attribute for the sensor function */
+    volatile long LastWindSpeed = 0;
+    volatile unsigned long LastRain = 0;
+    volatile unsigned int WindSpeedClick = 0;
+    volatile unsigned byte RainClick = 0; //use a byte to avoid problem went executing the 
+    long LastWindCheck = 0;    
+
     
   public :
     char* radioBuffer[62];
@@ -129,6 +136,12 @@ class WeatherStation
     /*
      * fonction to get the sensor value (and batterie)
      */
+
+    // for the interrupt
+    void interruptRainGauge();
+    void interruptWindSpeed();
+
+    // to get infos from the sensors
     float measureRainGauge();
     float measureWindDir(); // return the angle of the wind
     float measureWindSpeed();

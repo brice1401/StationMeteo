@@ -183,6 +183,33 @@ void WeatherStation::setupBattery(float batteryVoltage, float batteryTemp) {
  */
 /*******************************************************************************************************/
 
+// Interrrupt
+void interruptRainGauge()
+{
+  if ((millis() - LastRain) > 20)
+  {
+    RainClick++;
+    LastRain = millis();
+  }
+}
+
+void interruptWindSpeed()
+{
+  if ((millis() - LastWindSpeed) > 10)
+  {
+    WindSpeedClick++;
+    LastWindSpeed = millis();
+  }
+}
+
+float WeatherStation::measureRainGauge()
+{
+  // return the rain fell
+  float RainGaugeInter = float(RainClick) * 0.28;
+  RainClick = 0; // set the rain fall to 0
+  return(RainGaugeInter);
+}
+
 float WeatherStation::measureWindSpeed()
 {
   //Return the speed of the wind in km/h
@@ -196,13 +223,7 @@ float WeatherStation::measureWindSpeed()
 
   return (WindSpeed);
 }
-float WeatherStation::measureRainGauge()
-{
-  // return the rain fell
-  float RainGaugeInter = float(RainClick) * 0.28;
-  RainClick = 0; // set the rain fall to 0
-  return(RainGaugeInter);
-}
+
 float WeatherStation::measureWindDir()
 {
   //return the angle forme between the wind and north (north = 0°)
@@ -225,6 +246,7 @@ float WeatherStation::measureWindDir()
   if (WindAnalog < 951) return(315);
   if (WindAnalog < 1023) return(270);
 }
+
 float WeatherStation::measureTempDS18B20()
 {
   //get the temperature of the DS18B20 Temp sensor
@@ -233,34 +255,42 @@ float WeatherStation::measureTempDS18B20()
   float Tempetrature = sensorDS18B20.getTempCByIndex(0);
   return(Tempetrature);
 }
+
 float WeatherStation::measureTempBME()
 {
   return(float(bme.readTemperature()))
 }
+
 float WeatherStation::measureHumidity()
 {
   return(float(bme.readHumidity()));
 }
+
 float WeatherStation::measurePressure()
 {
   return(float(bme.readPressure()));
 }
+
 float WeatherStation::measureAltitude(int seaLevelPres = 101325;)
 {
   return(float(bme.readAltitude(seaLevelPres))); 
 }
+
 float WeatherStation::measureLightUV()
 {// return the UV index
   return(uv.readUV()/100);
 }
+
 float WeatherStation::measureLightVisible()
 {
   return(uv.readVisible());
 }
+
 float WeatherStation::measureLightIR()
 {
   return(uv.readIR());
 }
+
 float WeatherStation::measureVoltageBattery()
 {
   /* this fonction return the voltage of the battery
@@ -268,6 +298,7 @@ float WeatherStation::measureVoltageBattery()
 
 
 }
+
 float WeatherStation::measureTempBattery()
 {
   // this function take an int corresponding of the value of reading of the thermistor
