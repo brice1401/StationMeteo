@@ -47,11 +47,23 @@ WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS1
   DallasTemperature sensorDS18B20(&oneWire);
   DeviceAddress sensorDeviceAddress;
 
-  // init the BME sensor
-  bme.begin();
-  // init the UV sensor
+  sensorDS18B20.begin();
+  sensorDS18B20.getAddress(sensorDeviceAddress, 0);
+  sensorDS18B20.setResolution(sensorDeviceAddress, 12);
+
+
+  // init and test of the I2C sensors
   uv = Adafruit_SI1145();
-  uv.begin();
+  if(!uv.begin()){
+    Serial.print("Light sensor not working");
+    while(1);
+  }
+  if(!bme.begin()){
+    Serial.print("Pressure sensor not working");
+    while(1);    
+  }
+  Serial.print("Correct initialization of I2C sensor");
+  
 
   // init the attribute
   LastWindSpeed = 0;
@@ -443,7 +455,6 @@ void WeatherStation::setRadioBufferReceive(char* message)
     radioBuffer[i] = message[i];
   }
 }
-
 
 
 /*******************************************************************************************************/

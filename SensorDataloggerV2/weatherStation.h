@@ -157,11 +157,6 @@ class WeatherStation
     void sensorReading(); // collect the data on all the sensor and write them in the attribut
 
 
-    /*
-     * function to test the component
-     */
-    bool testSensorBME();
-    bool testSensorLight();
 };
 
 #endif

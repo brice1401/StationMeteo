@@ -1,52 +1,27 @@
 //Ajout des librairies
 #include <SPI.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <SD.h>
 #include <RTClib.h>
 #include "DHT.h"
-#include <math.h>
+
 #include "weatherStation.h"
 
 
 
-WeatherStation MaStationMeteo;
-
-//Definition des variables
-//float RainGauge = 0; //level of water fell, in mm
-
-//Variable volatile pour les interrupt
-volatile long LastWindSpeed = 0;
-volatile unsigned long LastRain = 0;
-volatile unsigned int WindSpeedClick = 0;
-volatile unsigned int RainClick = 0;
-long LastWindCheck = 0;
-
-// Variables pour le comptage pluviométrique
-//int LastButtonState = HIGH;
-//unsigned long LastRain = 0;  // the last time the output pin was toggled
 
 //Definition des Pins des capteurs
-const byte PinVitesse = 2;
-const byte PinPluie = 3;
-const byte PinTempHum = 4;
-const byte PinTemp = 5;
+const byte pinWindSpeed = 18;
+const byte pinRain = 19;
+const byte pinTempDS18 = 17;
 
-const byte PinDirection = A3;
+const byte pinWindDir = A3;
+const byte pinBatteryTemp = A4;
+const byte pinBatteryVoltage = A5;
+
+// creation of the object
+WeatherStation MaStationMeteo(pinRain, pinWindDir, pinWindSpeed, pinTempDS18, pinBatteryVoltage, pinBatteryTemp);
 
 
-
-
-// To stock the Data before save, 20 elements = 1h
-const int NumberDataType = 7;
-/* Rain Gauge
- * Wind direction
- * Wind sens
- * Temp OneWire
- * Temp DHT11
- * Humidity
- * Heat Index
- */
 
 const int NumberDataSave = 20; //Number of data to store before save
 int RainGaugeDataSave[NumberDataSave]; //Quantity of water fell
@@ -75,38 +50,15 @@ RTC_PCF8523 RTC;
 String FileName = "DataMeteo.txt";
 const int PinCSSD = 10; //CS of the SD card reader
 
-// Informations about temp and humidity with the DHT11 sensor (very low cost)
-#define DHTPIN  PinTempHum  // Digital pin connected to the DHT sensor
-#define DHTTYPE DHT11   // DHT 11
-DHT dht(DHTPIN, DHTTYPE);
-
-
-// init of temp sensor with oneWire communication
-OneWire oneWire(PinTemp);
-DallasTemperature sensors(&oneWire);
-DeviceAddress sensorDeviceAddress;
-
-
-//interrupt wind speed
-void WindSpeedInterrupt()
-{
-  if ((millis() - LastWindSpeed) > 10)
-  {
-    WindSpeedClick++;
-    LastWindSpeed = millis();
-  }
+// call for the interrupts
+void callInterruptWindSpeed(){
+  MaStationMeteo.interruptWindSpeed();
+}
+void callInterruptRain(){
+  MaStationMeteo.interruptRainGauge();
 }
 
 
-//interrupt rain
-void RainInterrupt()
-{
-  if ((millis() - LastRain) > 20)
-  {
-    RainClick++;
-    LastRain = millis();
-  }
-}
 
 void setup()
 {
@@ -114,17 +66,11 @@ void setup()
   Serial.begin(9600);
   
   //Interrupt for wind speed
-  attachInterrupt(digitalPinToInterrupt(PinVitesse), WindSpeedInterrupt, FALLING);
-  attachInterrupt(digitalPinToInterrupt(PinPluie), RainInterrupt, FALLING);
-  interrupts(); //turn on the interrrupt for wind speed
+  attachInterrupt(digitalPinToInterrupt(pinWindSpeed), callInterruptWindSpeed, FALLING);
+  attachInterrupt(digitalPinToInterrupt(pinRain), callInterruptRain, FALLING);
+  interrupts(); //turn on the interrrupt for wind speed 
 
-  //for rain gauge
-  pinMode(PinPluie, INPUT);
-
-  //for temperature
-  sensors.begin();
-  sensors.getAddress(sensorDeviceAddress, 0);
-  sensors.setResolution(sensorDeviceAddress, 12);
+  
 
   // use to init the RTC module
   RTC.begin(); // load the time from your computer.
@@ -145,9 +91,6 @@ void setup()
     while (1);
   }
   Serial.println("card initialized.");
-
-  //init the temp/humidity sensor in the house
-  dht.begin();
 
   MinuteSensor = RTC.now().minute();
 }
@@ -257,76 +200,6 @@ void loop()
   }
 }
 
-float getWindSpeed()
-{
-  //Return the speed of the wind in km/h
-  float deltaTime = millis() - LastWindCheck; //time between two check of wind speed (always < 3min)
-  deltaTime /= 1000.0; //convert to s
-
-  float WindSpeed = float(WindSpeedClick) / deltaTime; //frequency of click
-  WindSpeedClick = 0; //init the counter
-  LastWindCheck = millis();
-  WindSpeed *= 2.4;
-
-  return (WindSpeed);
-}
-
-float getRainGauge()
-{
-  // return the rain fell
-  float RainGaugeInter = float(RainClick) * 0.28;
-  RainClick = 0; // set the rain fall to 0
-  return(RainGaugeInter);
-}
-
-float getWindDirection()
-{
-  //return the angle forme between the wind and north (north = 0°)
-  float WindAnalog = averageAnalogRead(PinDirection);
-  
-  if (WindAnalog < 76) return(112.5);
-  if (WindAnalog < 91) return(67.5);
-  if (WindAnalog < 113) return(90);
-  if (WindAnalog < 161) return(157.5);
-  if (WindAnalog < 221) return(135);
-  if (WindAnalog < 274) return(202.5);
-  if (WindAnalog < 359) return(180);
-  if (WindAnalog < 451) return(22.5);
-  if (WindAnalog < 551) return(45);
-  if (WindAnalog < 639) return(247.5);
-  if (WindAnalog < 693) return(225);
-  if (WindAnalog < 774) return(337.5);
-  if (WindAnalog < 839) return(0);
-  if (WindAnalog < 891) return(292.5);
-  if (WindAnalog < 951) return(315);
-  if (WindAnalog < 1023) return(270);
-}
-
-float getTemperature()
-{
-  //get the temperature of the Temp sensor
-  //Only ask for the sensor on index 0 of the OneWire Bus
-  sensors.requestTemperatures();
-  float Tempetrature = sensors.getTempCByIndex(0);
-  return(Tempetrature);
-}
-
-
-//Takes an average of readings on a given pin
-//Returns the average
-/*
-int averageAnalogRead(int pinToRead)
-{
-  byte numberOfReadings = 8;
-  unsigned int runningValue = 0;
-
-  for(int x = 0 ; x < numberOfReadings ; x++)
-    runningValue += analogRead(pinToRead);
-  runningValue /= numberOfReadings;
-
-  return(runningValue);
-}
-*/
 
 long sumArray(int arrayData[], int lengthData)
 {
