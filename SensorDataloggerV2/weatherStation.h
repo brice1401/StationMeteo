@@ -174,3 +174,4 @@ float windChill(float tempC, float windSpeed);
 float heatIndex(float tempC, float humidity);
 
 int averageAnalogRead(int pinToRead);
+int averageAnalogReadAngle(int pin2Read);

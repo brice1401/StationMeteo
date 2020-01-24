@@ -247,7 +247,7 @@ float WeatherStation::measureWindSpeed()
 float WeatherStation::measureWindDir()
 {
   //return the angle forme between the wind and north (north = 0°)
-  float WindAnalog = averageAnalogRead(pinWindDir);
+  float WindAnalog = analogRead(pinWindDir);
   
   if (WindAnalog < 76) return(112.5);
   if (WindAnalog < 91) return(67.5);
@@ -264,7 +264,7 @@ float WeatherStation::measureWindDir()
   if (WindAnalog < 839) return(0);
   if (WindAnalog < 891) return(292.5);
   if (WindAnalog < 951) return(315);
-  if (WindAnalog < 1023) return(270);
+  return(270);
 }
 
 float WeatherStation::measureTempDS18B20()
@@ -334,7 +334,7 @@ float WeatherStation::measureTempBattery()
   // Vin = 5V
   // Vout = readingThermistor
 
-  int readingThermistor = analogRead(pinBatteryTemp); // get the value of the pin  
+  int readingThermistor = averageAnalogRead(pinBatteryTemp); // get the value of the pin  
   float R1 = 10000; // resistor of the divisor tension to readthe
   float Vin = 5;
   float Rt; // value of reisitivity of the thermistor
@@ -541,4 +541,9 @@ int averageAnalogRead(int pinToRead)
   runningValue /= numberOfReadings;
 
   return(runningValue);
+}
+
+int averageAnalogReadAngle(int pin2Read)
+{
+  // fonction to read the analogue value of 
 }

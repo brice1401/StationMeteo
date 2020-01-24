@@ -1,12 +1,7 @@
 //Ajout des librairies
 #include <SPI.h>
-#include <SD.h>
 #include <RTClib.h>
-#include "DHT.h"
-
 #include "weatherStation.h"
-
-
 
 
 //Definition des Pins des capteurs
@@ -19,7 +14,7 @@ const byte pinBatteryTemp = A4;
 const byte pinBatteryVoltage = A5;
 
 // creation of the object
-WeatherStation MaStationMeteo(pinRain, pinWindDir, pinWindSpeed, pinTempDS18, pinBatteryVoltage, pinBatteryTemp);
+WeatherStation maStationMeteo(pinRain, pinWindDir, pinWindSpeed, pinTempDS18, pinBatteryVoltage, pinBatteryTemp);
 
 
 
@@ -46,18 +41,14 @@ String DateScheduleSave; // date and schedule of the save
 RTC_PCF8523 RTC;
 
 
-// Informations for the save on the SD card :
-String FileName = "DataMeteo.txt";
-const int PinCSSD = 10; //CS of the SD card reader
 
 // call for the interrupts
 void callInterruptWindSpeed(){
-  MaStationMeteo.interruptWindSpeed();
+  maStationMeteo.interruptWindSpeed();
 }
 void callInterruptRain(){
-  MaStationMeteo.interruptRainGauge();
+  maStationMeteo.interruptRainGauge();
 }
-
 
 
 void setup()
@@ -80,18 +71,6 @@ void setup()
     // This will reflect the time that your sketch was compiled
     RTC.adjust(DateTime(__DATE__, __TIME__));
   }
-
-  // To init the SD card reader
-  pinMode(PinCSSD, OUTPUT); //pin slave du lecteur sd
-
-  if (!SD.begin(PinCSSD))
-  {
-    Serial.println("Card Failure, or not present");
-    // don't do anything more:
-    while (1);
-  }
-  Serial.println("card initialized.");
-
   MinuteSensor = RTC.now().minute();
 }
 
@@ -125,78 +104,12 @@ void loop()
   {// get the data for the sensor every 3 minutes
 
     //gather all the informations on the sensors
-    float RainGauge;
-    float WindDirection; // entier de 0 a 360
-    float WindSpeed; //envoie la frequence de rotation de l'anenometre
-    float Temp; // variable pour la température
-    RainGauge = getRainGauge();
-    WindSpeed = getWindSpeed();
-    WindDirection = getWindDirection();
-    Temp = getTemperature();
+    
 
-    // collect the information about the temp/humidity on the dht11
-    float TempDHT11 = dht.readTemperature();
-    float Humidity = dht.readHumidity();
-    if (!isnan(TempDHT11) || !isnan(Humidity))
-    { //check if the reading of temperature or the humidity is ok
-      float HeatIndex = dht.computeHeatIndex(TempDHT11, Humidity, false); 
-      // Compute heat index in Celsius (isFahreheit = false)
-      HeatIndexDataSave[WritingIndex] = int((HeatIndex + 40) * 10); //Heat index
-    }
-
-    // Write them on the vector of data, no need for rain
-    RainGaugeDataSave[WritingIndex] = int(RainGauge) * 10;
-    WindSpeedDataSave[WritingIndex] = int(WindSpeed) * 10; //Speed of wind
-    WindDirectionDataSave[WritingIndex] = int(WindDirection); //Direction of wind
-    TempDataSave[WritingIndex] = int((Temp + 40) * 10); // Temp on OneWire
-    TempDHT11DataSave[WritingIndex] = int((TempDHT11 + 40) * 10); // Temp on DHT11 
-    HumidityDataSave[WritingIndex] = int(Humidity); //Humidity on DHT11
     
     WritingIndex = (WritingIndex + 1 ) % 20;
 
     MinuteSensor = CurrentMinute;
-  }
-  
-  /* To save the data on the SD card */
-  if(((SaveHour + HourBetweenSave) % 24) == CurrentHour)
-  {
-    // We save the data on the SD card
-    String ArrayNameData[NumberDataType] = {"Pluie;", "Direction Vent;", "Force Vent;", "Temperature OneWire;", "Temperature DHT11;", "Humidité;", "Heat Index;"};
-    
-    // Collection and mean of data before save :
-    float DataGroupSave[NumberDataType];
-    DataGroupSave[0] = sumArray(RainGaugeDataSave,NumberDataSave) / 10;
-    DataGroupSave[1] = meanArrayAngle(WindDirectionDataSave, NumberDataSave); // the function return directly the angle
-    DataGroupSave[2] = meanArray(WindSpeedDataSave, NumberDataSave) / 10;
-    DataGroupSave[3] = ((meanArray(TempDataSave, NumberDataSave) / 10) - 40);
-    DataGroupSave[4] = ((meanArray(TempDHT11DataSave, NumberDataSave) / 10) - 40);
-    DataGroupSave[5] = meanArray(HumidityDataSave, NumberDataSave); //Humidité
-    DataGroupSave[6] = ((meanArray(HeatIndexDataSave, NumberDataSave) / 10) - 40);
-
-    // get the date and time of the save
-    DateScheduleSave = getDate() + ";" + getHoraireHM() + ";";
-
-    //stop the interrupt during the saving
-    noInterrupts();
-    
-    // open the file
-    File dataFile = SD.open("Meteo.txt", FILE_WRITE);
-    if (dataFile) {
-      // the card had opened the file
-      // write all the information (Rain, wind dierction and speed, out temp)
-      for(int i = 0; i < NumberDataType; i++)
-      {
-        String LigneCSV = ArrayNameData[i] + DateScheduleSave + String(DataGroupSave[i]);
-        dataFile.println(LigneCSV);
-      }      
-      dataFile.close(); //close the file
-    }
-    else {
-      Serial.println("Couldn't open log file");
-    }
-    
-    interrupts(); //activate the interrupt
-    SaveHour = CurrentHour;
   }
 }
 
