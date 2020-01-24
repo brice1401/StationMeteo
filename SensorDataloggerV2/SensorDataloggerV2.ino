@@ -12,21 +12,11 @@ const byte pinTempDS18 = 17;
 const byte pinWindDir = A3;
 const byte pinBatteryTemp = A4;
 const byte pinBatteryVoltage = A5;
+const byte pinRef3V3 = A6;
 
 // creation of the object
-WeatherStation maStationMeteo(pinRain, pinWindDir, pinWindSpeed, pinTempDS18, pinBatteryVoltage, pinBatteryTemp);
+WeatherStation maStationMeteo(pinRain, pinWindDir, pinWindSpeed, pinTempDS18, pinBatteryVoltage, pinBatteryTemp, pinRef3V3);
 
-
-
-const int NumberDataSave = 20; //Number of data to store before save
-int RainGaugeDataSave[NumberDataSave]; //Quantity of water fell
-int WindSpeedDataSave[NumberDataSave]; //Speed of wind each 3 min
-int WindDirectionDataSave[NumberDataSave]; //Direction of wind each 3 min
-int TempDataSave[NumberDataSave]; // Temp on OneWire
-int TempDHT11DataSave[NumberDataSave]; // Temp on DHT11 
-int HumidityDataSave[NumberDataSave]; //Humidity on DHT11
-int HeatIndexDataSave[NumberDataSave]; //Heat index
-int WritingIndex = 0;
 
 // Information about time and date
 unsigned long UnixTime;
@@ -104,10 +94,7 @@ void loop()
   {// get the data for the sensor every 3 minutes
 
     //gather all the informations on the sensors
-    
-
-    
-    WritingIndex = (WritingIndex + 1 ) % 20;
+    maStationMeteo.sensorReading();
 
     MinuteSensor = CurrentMinute;
   }

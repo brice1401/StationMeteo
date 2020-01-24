@@ -42,12 +42,14 @@ class WeatherStation
     byte pinWindDir;
     byte pinBatteryTemp;
     byte pinBatteryVoltage;
+    byte pinRef3V3;
     byte pinRain;
     byte pinDS18;
     byte pinWindSpeed;
 
     /* for the function */
     int seaLevelPressure;
+    byte activateWindSpeed;
 
     /* Sensors object */
     DallasTemperature sensorDS18B20;
@@ -71,7 +73,7 @@ class WeatherStation
   public :
     /* Constructor and destructor */
     WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS18, 
-                   byte batteryVoltage, byte batteryTemp); // constructor for the sensor card
+                   byte batteryVoltage, byte batteryTemp, byte ref3V3); // constructor for the sensor card
     WeatherStation::WeatherStation(); // constructor for the receptor
     ~WeatherStation();
 
@@ -143,7 +145,7 @@ class WeatherStation
     float measureRainGauge();
     float measureWindDir(); // return the angle of the wind
     float measureWindSpeed();
-    float measureTempDS18B20(); // get the temp from the DS18B20 temp sensor
+    float measureTempDS18(); // get the temp from the DS18B20 temp sensor
     float measureTempBME();
     float measureHumidity();
     float measurePressure();
@@ -151,8 +153,8 @@ class WeatherStation
     float measureLightUV();
     float measureLightVisible();
     float measureLightIR();
-    float measureVoltageBattery();
-    float measureTempBattery();
+    float measureBatteryVoltage();
+    float measureBatteryTemp();
     
     void sensorReading(); // collect the data on all the sensor and write them in the attribut
 

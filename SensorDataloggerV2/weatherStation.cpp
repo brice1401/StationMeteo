@@ -16,7 +16,7 @@
 /*******************************************************************************************************/
 
 WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS18,
-                               byte batteryVoltage, byte batteryTemp)
+                               byte batteryVoltage, byte batteryTemp, byte ref3V3)
 {
   /* constructor for the sensor
    * init the connexion pin of the weather station 
@@ -28,6 +28,7 @@ WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS1
   pinDS18 = DS18;
   pinBatteryVoltage = batteryVoltage;
   pinBatteryTemp = batteryTemp;
+  pinRef3V3 = ref3V3;
 
 
   /*
@@ -73,6 +74,7 @@ WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS1
   LastWindCheck = 0;
 
   seaLevelPres = 101325;
+  activateWindSpeed = 0; //the measure is inactive
 }
 
 WeatherStation::WeatherStation()
@@ -215,10 +217,13 @@ void WeatherStation::interruptRainGauge()
 
 void WeatherStation::interruptWindSpeed()
 {
-  if ((millis() - LastWindSpeed) > 10)
+  if(activateWindSpeed)
   {
-    WindSpeedClick++;
-    LastWindSpeed = millis();
+    if ((millis() - LastWindSpeed) > 10)
+    {
+      WindSpeedClick++;
+      LastWindSpeed = millis();
+    }
   }
 }
 
@@ -233,12 +238,18 @@ float WeatherStation::measureRainGauge()
 float WeatherStation::measureWindSpeed()
 {
   //Return the speed of the wind in km/h
-  float deltaTime = millis() - LastWindCheck; //time between two check of wind speed (always < 3min)
-  deltaTime /= 1000.0; //convert to s
+  activateWindSpeed = 1; // activate the interrupt
+  unsigned long startReading = millis();
+  unsigned long endReading;
+  int durationReading = 5 * 1000;
 
-  float WindSpeed = float(WindSpeedClick) / deltaTime; //frequency of click
+  while(millis() - startReading < durationReading) {}
+  endReading = millis();
+  activateWindSpeed = 0; // stop the interrupt
+  
+  float WindSpeed = float(WindSpeedClick) / float((endReading - startReading) / 1000); //frequency of click
+ 
   WindSpeedClick = 0; //init the counter
-  LastWindCheck = millis();
   WindSpeed *= 2.4;
 
   return (WindSpeed);
@@ -267,7 +278,7 @@ float WeatherStation::measureWindDir()
   return(270);
 }
 
-float WeatherStation::measureTempDS18B20()
+float WeatherStation::measureTempDS18()
 {
   //get the temperature of the DS18B20 Temp sensor
   //Only ask for the sensor on index 0 of the OneWire Bus
@@ -311,15 +322,26 @@ float WeatherStation::measureLightIR()
   return(uv.readIR());
 }
 
-float WeatherStation::measureVoltageBattery()
+float WeatherStation::measureBatteryVoltage()
 {
-  /* this fonction return the voltage of the battery
-      it uses an approximation to mesure it */
+/*Returns the voltage of the raw pin based on the 3.3V rail
+ *The battery can ranges from 4.2V down to around 3.3V
+ *This function allows us to ignore what VCC might be (an Arduino plugged into USB has VCC of 4.5 to 5.2V)
+ *The weather shield has a pin called RAW (VIN) fed through through two 5% resistors and connected to A2 (BATT):
+ *3.9K on the high side (R1), and 1K on the low side (R2)
+ */
+ 
+  float operatingVoltage = averageAnalogRead(pinRef3V3);
+  float rawVoltage = averageAnalogRead(pinBatteryVoltage);
 
+  operatingVoltage = 3.30 / operatingVoltage;
+  rawVoltage *= operatingVoltage; //Convert the 0 to 1023 int to actual voltage on BATT pin
+  rawVoltage *= 4.90; //(3.9k+1k)/1k - multiply BATT voltage by the voltage divider to get actual system voltage
 
+  return(rawVoltage);
 }
 
-float WeatherStation::measureTempBattery()
+float WeatherStation::measureBatteryTemp()
 {
   // this function take an int corresponding of the value of reading of the thermistor
   // the correlation is make with the equation on :
@@ -360,6 +382,11 @@ void WeatherStation::sensorReading()
    * write the value inside the attribut of an object of the class
    */
 
+  setupRainWind(measureRainGauge(), measureWindDir(), measureWindSpeed());
+  setTempDS18(measureTempDS18());
+  setupBME(measureTempBME(), measureHumidity(), measurePressure(), measureAltitude());
+  setupLight(measureLightUV(), measureLightVisible(), measureLightIR());
+  setupBattery(measureBatteryVoltage(), measureBatteryTemp());
    
 }
 
