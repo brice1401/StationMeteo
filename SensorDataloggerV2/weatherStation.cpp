@@ -558,9 +558,9 @@ float heatIndex(float tempC, float humidity)
   return (degreF2C(float(heatIndex))); // convert to °C
 }
 
-int averageAnalogRead(int pinToRead)
+int averageAnalogRead(int pinToRead, byte numberOfReadings)
 {
-  byte numberOfReadings = 8;
+  // function return the average value read from an analog input
   unsigned int runningValue = 0;
 
   for(int x = 0 ; x < numberOfReadings ; x++)
@@ -570,7 +570,31 @@ int averageAnalogRead(int pinToRead)
   return(runningValue);
 }
 
-int averageAnalogReadAngle(int pin2Read)
+float WeatherStation::averageWindDirAngle(byte numberOfReadings)
 {
-  // fonction to read the analogue value of 
+  // function return the average angle of the wind direction
+  double sumCos = 0;
+  double sumSin = 0;
+  double angleMeasure;
+
+  for(int i = 0; i < numberOfReadings; i++)
+  {
+    angleMeasure = double(measureWindDir());
+    // Calculate the sin and cosine of all angle and add them to calculate the average value
+    sumSin += sin(angleMeasure);
+    sumCos += cos(angleMeasure);
+  }
+
+  sumCos = sumCos / double(numberOfReadings);
+  sumSin = sumSin / double(numberOfReadings);
+  
+  
+  double angle = atan2(sumSin, sumCos) * 180.0/3.14; // atan2(y, x)
+
+  if(angle < 0)
+  { // function atan2 return an angle between -pi and pi, 
+    // so if the angle is negative, add 360° to have a result between 0 and 360°
+    angle += 360;
+  }
+  return(float(angle));
 }

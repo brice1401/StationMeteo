@@ -158,6 +158,8 @@ class WeatherStation
     
     void sensorReading(); // collect the data on all the sensor and write them in the attribut
 
+    float averageWindDirAngle(byte numberOfReadings);
+
 
 };
 
