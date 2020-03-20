@@ -5,17 +5,17 @@
 
 
 //Definition des Pins des capteurs
-const byte pinWindSpeed = 18;
-const byte pinRain = 19;
-const byte pinTempDS18 = 17;
+const byte pinWindSpeed = 3;
+const byte pinRain = 4;
+const byte pinDHT22 = 5;
 
-const byte pinWindDir = A3;
-const byte pinBatteryTemp = A4;
-const byte pinBatteryVoltage = A5;
-const byte pinRef3V3 = A6;
+const byte pinWindDir = A2;
+const byte pinBatteryTemp = A6;
+const byte pinBatteryVoltage = A7;
+const byte pinRef3V3 = A3;
 
 // creation of the object
-WeatherStation maStationMeteo(pinRain, pinWindDir, pinWindSpeed, pinTempDS18, pinBatteryVoltage, pinBatteryTemp, pinRef3V3);
+WeatherStation maStationMeteo(pinRain, pinWindDir, pinWindSpeed, pinDHT22, pinBatteryVoltage, pinBatteryTemp, pinRef3V3);
 
 
 // Information about time and date

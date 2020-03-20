@@ -1,12 +1,11 @@
-
 #include <math.h>
 #include "weatherStation.h"
 #include <SPI.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
+#include <Wire.h>
+#include <DHT.h>
 #include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
-#include "Adafruit_SI1145.h"
+#include <Adafruit_BMP280.h>
+
 
 /* Creation of a WeatherStation class to store data */
 /* This class will be useful for coding/decoding the message send via radio */
@@ -15,56 +14,45 @@
 /* Constructor and destructor */
 /*******************************************************************************************************/
 
-WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS18,
+WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte tempDHT,
                                byte batteryVoltage, byte batteryTemp, byte ref3V3)
+  : dht(tempDHT, DHT22)
 {
   /* constructor for the sensor
-   * init the connexion pin of the weather station 
-   * and init the connexion to the sensor
-   */
+     init the connexion pin of the weather station
+     and init the connexion to the sensor
+  */
   pinRain = rain;
   pinWindDir = windDir;
   pinWindSpeed = windSpeed;
-  pinDS18 = DS18;
+  pinDHT = tempDHT;
   pinBatteryVoltage = batteryVoltage;
   pinBatteryTemp = batteryTemp;
   pinRef3V3 = ref3V3;
 
 
   /*
-   * Init all the pin of I/O
-   * and activate the library of all the sensor
-   */
+     Init all the pin of I/O
+     and activate the library of all the sensor
+  */
 
   pinMode(pinRain, INPUT);
   pinMode(pinWindDir, INPUT);
   pinMode(pinWindSpeed, INPUT);
-  pinMode(pinDS18, INPUT);
   pinMode(pinBatteryVoltage, INPUT);
   pinMode(pinBatteryTemp, INPUT);
-  
-  // init of temp sensor with oneWire communication
-  OneWire oneWire(pinDS18);
-  DallasTemperature sensorDS18B20(&oneWire);
-  DeviceAddress sensorDeviceAddress;
 
-  sensorDS18B20.begin();
-  sensorDS18B20.getAddress(sensorDeviceAddress, 0);
-  sensorDS18B20.setResolution(sensorDeviceAddress, 12);
 
+
+  dht.begin();
 
   // init and test of the I2C sensors
-  uv = Adafruit_SI1145();
-  if(!uv.begin()){
-    Serial.print("Light sensor not working");
-    while(1);
-  }
-  if(!bme.begin()){
+  if (!bmp.begin()) {
     Serial.print("Pressure sensor not working");
-    while(1);    
+    while (1);
   }
   Serial.print("Correct initialization of I2C sensor");
-  
+
 
   // init the attribute
   LastWindSpeed = 0;
@@ -77,13 +65,13 @@ WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS1
   activateWindSpeed = 0; //the measure is inactive
 }
 
-WeatherStation::WeatherStation()
-{
-  /* 
-   * constructor for the receptor 
-   */
+//WeatherStation::WeatherStation()
+//{
+/*
+   constructor for the receptor
+*/
 
-}
+//}
 
 WeatherStation::~WeatherStation() {
 
@@ -102,11 +90,11 @@ float WeatherStation::getWindDir() {
 float WeatherStation::getWindSpeed() {
   return (windSpeed);
 }
-float WeatherStation::getTempDS18() {
-  return (tempDS18);
+float WeatherStation::getTempDHT() {
+  return (tempDHT);
 }
-float WeatherStation::getTempBME() {
-  return (tempBME);
+float WeatherStation::getTempBMP() {
+  return (tempBMP);
 }
 float WeatherStation::getHumidity() {
   return (humidity);
@@ -117,14 +105,8 @@ float WeatherStation::getPressure() {
 float WeatherStation::getAltitude() {
   return (altitude);
 }
-float WeatherStation::getLightUV() {
-  return (lightUV);
-}
-float WeatherStation::getLightVisible() {
-  return (lightVisible);
-}
-float WeatherStation::getLightIR() {
-  return (lightIR);
+float WeatherStation::getLight() {
+  return (light);
 }
 float WeatherStation::getBatteryVoltage() {
   return (batteryVoltage);
@@ -142,11 +124,11 @@ void WeatherStation::setWindDir(float value) {
 void WeatherStation::setWindSpeed(float value) {
   windSpeed = value;
 }
-void WeatherStation::setTempDS18(float value) {
-  tempDS18 = value;
+void WeatherStation::setTempDHT(float value) {
+  tempDHT = value;
 }
-void WeatherStation::setTempBME(float value) {
-  tempBME = value;
+void WeatherStation::setTempBMP(float value) {
+  tempBMP = value;
 }
 void WeatherStation::setHumidity(float value) {
   humidity = value;
@@ -157,14 +139,8 @@ void WeatherStation::setPressure(float value) {
 void WeatherStation::setAltitude(float value) {
   altitude = value;
 }
-void WeatherStation::setLightUV(float value) {
-  lightUV = value;
-}
-void WeatherStation::setLightVisible(float value) {
-  lightVisible = value;
-}
-void WeatherStation::setLightIR(float value) {
-  lightIR = value;
+void WeatherStation::setLight(float value) {
+  light = value;
 }
 void WeatherStation::setBatteryVoltage(float value) {
   batteryVoltage = value;
@@ -174,24 +150,22 @@ void WeatherStation::setBatteryTemp(float value) {
 }
 
 /*
- * group some function in order to have more readable code
- */
+   group some function in order to have more readable code
+*/
 void WeatherStation::setupRainWind(float rain, float windDir, float windSpeed) {
   setRain(rain);
   setWindDir(windDir);
   setWindSpeed(windSpeed);
 }
-void WeatherStation::setupBME(float temp, float humidity, float pressure, float altitude) {
-  setTempBME(temp);
+void WeatherStation::setupDHT(float temp, float humidity) {
   setHumidity(humidity);
+  setTempDHT(temp);
+}
+void WeatherStation::setupBMP(float temp, float pressure, float altitude) {
+  setTempBMP(temp);
   setPressure(pressure);
   setAltitude(altitude);
 
-}
-void WeatherStation::setupLight(float lightUV, float lightVisible, float lightIR) {
-  setLightUV(lightUV);
-  setLightVisible(lightVisible);
-  setLightIR(lightIR);
 }
 void WeatherStation::setupBattery(float batteryVoltage, float batteryTemp) {
   setBatteryVoltage(batteryVoltage);
@@ -201,8 +175,8 @@ void WeatherStation::setupBattery(float batteryVoltage, float batteryTemp) {
 
 /*******************************************************************************************************/
 /*
- * Function for sensor reading
- */
+   Function for sensor reading
+*/
 /*******************************************************************************************************/
 
 // Interrrupt
@@ -217,7 +191,7 @@ void WeatherStation::interruptRainGauge()
 
 void WeatherStation::interruptWindSpeed()
 {
-  if(activateWindSpeed)
+  if (activateWindSpeed)
   {
     if ((millis() - LastWindSpeed) > 10)
     {
@@ -232,7 +206,7 @@ float WeatherStation::measureRainGauge()
   // return the rain fell
   float RainGaugeInter = float(RainClick) * 0.28;
   RainClick = 0; // set the rain fall to 0
-  return(RainGaugeInter);
+  return (RainGaugeInter);
 }
 
 float WeatherStation::measureWindSpeed()
@@ -243,12 +217,12 @@ float WeatherStation::measureWindSpeed()
   unsigned long endReading;
   int durationReading = 5 * 1000;
 
-  while(millis() - startReading < durationReading) {}
+  while (millis() - startReading < durationReading) {}
   endReading = millis();
   activateWindSpeed = 0; // stop the interrupt
-  
+
   float WindSpeed = float(WindSpeedClick) / float((endReading - startReading) / 1000); //frequency of click
- 
+
   WindSpeedClick = 0; //init the counter
   WindSpeed *= 2.4;
 
@@ -259,86 +233,71 @@ float WeatherStation::measureWindDir()
 {
   //return the angle forme between the wind and north (north = 0°)
   float WindAnalog = analogRead(pinWindDir);
-  
-  if (WindAnalog < 76) return(112.5);
-  if (WindAnalog < 91) return(67.5);
-  if (WindAnalog < 113) return(90);
-  if (WindAnalog < 161) return(157.5);
-  if (WindAnalog < 221) return(135);
-  if (WindAnalog < 274) return(202.5);
-  if (WindAnalog < 359) return(180);
-  if (WindAnalog < 451) return(22.5);
-  if (WindAnalog < 551) return(45);
-  if (WindAnalog < 639) return(247.5);
-  if (WindAnalog < 693) return(225);
-  if (WindAnalog < 774) return(337.5);
-  if (WindAnalog < 839) return(0);
-  if (WindAnalog < 891) return(292.5);
-  if (WindAnalog < 951) return(315);
-  return(270);
+
+  if (WindAnalog < 76) return (112.5);
+  if (WindAnalog < 91) return (67.5);
+  if (WindAnalog < 113) return (90);
+  if (WindAnalog < 161) return (157.5);
+  if (WindAnalog < 221) return (135);
+  if (WindAnalog < 274) return (202.5);
+  if (WindAnalog < 359) return (180);
+  if (WindAnalog < 451) return (22.5);
+  if (WindAnalog < 551) return (45);
+  if (WindAnalog < 639) return (247.5);
+  if (WindAnalog < 693) return (225);
+  if (WindAnalog < 774) return (337.5);
+  if (WindAnalog < 839) return (0);
+  if (WindAnalog < 891) return (292.5);
+  if (WindAnalog < 951) return (315);
+  return (270);
 }
 
-float WeatherStation::measureTempDS18()
-{
-  //get the temperature of the DS18B20 Temp sensor
-  //Only ask for the sensor on index 0 of the OneWire Bus
-  sensorDS18B20.requestTemperatures();
-  float Tempetrature = sensorDS18B20.getTempCByIndex(0);
-  return(Tempetrature);
+float WeatherStation::measureTempDHT() {
+  //get the temperature of the DHT Temp sensor
+  float t = dht.readTemperature();
+  if (isnan(t)) {
+    //si la lecture echoue on renvoie le min qui après la transformation radion donne 0
+    return (-40);
+  }
+  return (t);
 }
-
-float WeatherStation::measureTempBME()
-{
-  return(float(bme.readTemperature()));
+float WeatherStation::measureHumidity() {
+  float h = dht.readHumidity();
+  if (isnan(h)) {
+    return (0);
+  }
+  return (h);
 }
-
-float WeatherStation::measureHumidity()
-{
-  return(float(bme.readHumidity()));
+float WeatherStation::measureTempBMP() {
+  return (float(bmp.readTemperature()));
 }
-
-float WeatherStation::measurePressure()
-{
-  return(float(bme.readPressure()));
+float WeatherStation::measurePressure() {
+  return (float(bmp.readPressure()));
 }
-
-float WeatherStation::measureAltitude()
-{
-  return(float(bme.readAltitude(seaLevelPres))); 
+float WeatherStation::measureAltitude() {
+  return (float(bmp.readAltitude(seaLevelPres)));
 }
-
-float WeatherStation::measureLightUV()
-{// return the UV index
-  return(uv.readUV()/100);
-}
-
-float WeatherStation::measureLightVisible()
-{
-  return(uv.readVisible());
-}
-
-float WeatherStation::measureLightIR()
-{
-  return(uv.readIR());
+float WeatherStation::measureLight() {
+  return (10);
 }
 
 float WeatherStation::measureBatteryVoltage()
 {
-/*Returns the voltage of the raw pin based on the 3.3V rail
- *The battery can ranges from 4.2V down to around 3.3V
- *This function allows us to ignore what VCC might be (an Arduino plugged into USB has VCC of 4.5 to 5.2V)
- *The weather shield has a pin called RAW (VIN) fed through through two 5% resistors and connected to A2 (BATT):
- *3.9K on the high side (R1), and 1K on the low side (R2)
- */
- 
-  float operatingVoltage = averageAnalogRead(pinRef3V3);
-  float rawVoltage = averageAnalogRead(pinBatteryVoltage);
+  /*Returns the voltage of the raw pin based on the 3.3V rail
+    The battery can ranges from 4.2V down to around 3.3V
+    This function allows us to ignore what VCC might be (an Arduino plugged into USB has VCC of 4.5 to 5.2V)
+    The weather shield has a pin called RAW (VIN) fed through through two 5% resistors and connected to A2 (BATT):
+    3.9K on the high side (R1), and 1K on the low side (R2)
+  */
+
+  float operatingVoltage = averageAnalogRead(pinRef3V3, 16);
+  float rawVoltage = averageAnalogRead(pinBatteryVoltage, 16);
 
   operatingVoltage = 3.30 / operatingVoltage;
   rawVoltage *= operatingVoltage; //Convert the 0 to 1023 int to actual voltage on BATT pin
   rawVoltage *= 4.90; //(3.9k+1k)/1k - multiply BATT voltage by the voltage divider to get actual system voltage
 
-  return(rawVoltage);
+  return (rawVoltage);
 }
 
 float WeatherStation::measureBatteryTemp()
@@ -356,7 +315,7 @@ float WeatherStation::measureBatteryTemp()
   // Vin = 5V
   // Vout = readingThermistor
 
-  int readingThermistor = averageAnalogRead(pinBatteryTemp); // get the value of the pin  
+  int readingThermistor = averageAnalogRead(pinBatteryTemp, 16); // get the value of the pin
   float R1 = 10000; // resistor of the divisor tension to readthe
   float Vin = 5;
   float Rt; // value of reisitivity of the thermistor
@@ -378,16 +337,16 @@ float WeatherStation::measureBatteryTemp()
 void WeatherStation::sensorReading()
 {
   /*
-   * this fonction read the value from all the sensors
-   * write the value inside the attribut of an object of the class
-   */
+     this fonction read the value from all the sensors
+     write the value inside the attribut of an object of the class
+  */
 
   setupRainWind(measureRainGauge(), measureWindDir(), measureWindSpeed());
-  setTempDS18(measureTempDS18());
-  setupBME(measureTempBME(), measureHumidity(), measurePressure(), measureAltitude());
-  setupLight(measureLightUV(), measureLightVisible(), measureLightIR());
+  setupDHT(measureTempDHT(), measureHumidity());
+  setupBMP(measureTempBMP(), measurePressure(), measureAltitude());
+  setLight(measureLight());
   setupBattery(measureBatteryVoltage(), measureBatteryTemp());
-   
+
 }
 
 /*******************************************************************************************************/
@@ -443,14 +402,13 @@ void WeatherStation::codingMessage()
   value2Buff(rain, 0);
   value2Buff(windDir, 4);
   value2Buff(windSpeed, 8);
-  value2Buff(tempDS18, 12, true);
-  value2Buff(tempBME, 16, true);
-  value2Buff(humidity, 20);
+  value2Buff(tempDHT, 12, true);
+  value2Buff(humidity, 16);
+  value2Buff(tempBMP, 20, true);
   value2Buff(pressure, 24);
   value2Buff(altitude, 28);
-  value2Buff(lightUV, 32);
-  value2Buff(lightVisible, 36);
-  value2Buff(lightIR, 40);
+  value2Buff(light, 32);
+
   value2Buff(batteryVoltage, 52);
   value2Buff(batteryTemp, 56, true);
 }
@@ -460,14 +418,13 @@ void WeatherStation::decodingMessage()
   rain = buff2Value(0);
   windDir = buff2Value(4);
   windSpeed = buff2Value(8);
-  tempDS18 = buff2Value(12, true);
-  tempBME = buff2Value(16, true);
-  humidity = buff2Value(20);
+  tempDHT = buff2Value(12, true);
+  humidity = buff2Value(16);
+  tempBMP = buff2Value(20, true);
   pressure = buff2Value(24);
   altitude = buff2Value(28);
-  lightUV = buff2Value(32);
-  lightVisible = buff2Value(36);
-  lightIR = buff2Value(40);
+  light = buff2Value(32);
+
   batteryVoltage = buff2Value(52);
   batteryTemp = buff2Value(56);
 }
@@ -558,16 +515,16 @@ float heatIndex(float tempC, float humidity)
   return (degreF2C(float(heatIndex))); // convert to °C
 }
 
-int averageAnalogRead(int pinToRead, byte numberOfReadings)
+int WeatherStation::averageAnalogRead(int pinToRead, byte numberOfReadings)
 {
   // function return the average value read from an analog input
   unsigned int runningValue = 0;
 
-  for(int x = 0 ; x < numberOfReadings ; x++)
+  for (int x = 0 ; x < numberOfReadings ; x++)
     runningValue += analogRead(pinToRead);
   runningValue /= numberOfReadings;
 
-  return(runningValue);
+  return (runningValue);
 }
 
 float WeatherStation::averageWindDirAngle(byte numberOfReadings)
@@ -577,7 +534,7 @@ float WeatherStation::averageWindDirAngle(byte numberOfReadings)
   double sumSin = 0;
   double angleMeasure;
 
-  for(int i = 0; i < numberOfReadings; i++)
+  for (int i = 0; i < numberOfReadings; i++)
   {
     angleMeasure = double(measureWindDir());
     // Calculate the sin and cosine of all angle and add them to calculate the average value
@@ -587,14 +544,14 @@ float WeatherStation::averageWindDirAngle(byte numberOfReadings)
 
   sumCos = sumCos / double(numberOfReadings);
   sumSin = sumSin / double(numberOfReadings);
-  
-  
-  double angle = atan2(sumSin, sumCos) * 180.0/3.14; // atan2(y, x)
 
-  if(angle < 0)
-  { // function atan2 return an angle between -pi and pi, 
+
+  double angle = atan2(sumSin, sumCos) * 180.0 / 3.14; // atan2(y, x)
+
+  if (angle < 0)
+  { // function atan2 return an angle between -pi and pi,
     // so if the angle is negative, add 360° to have a result between 0 and 360°
     angle += 360;
   }
-  return(float(angle));
+  return (float(angle));
 }

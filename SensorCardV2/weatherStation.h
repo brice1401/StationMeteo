@@ -1,9 +1,8 @@
 #include <SPI.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
+#include <Wire.h>
+#include <DHT.h>
 #include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
-#include "Adafruit_SI1145.h"
+#include <Adafruit_BMP280.h>
 #include <Arduino.h>
 #include <math.h>
 
@@ -27,14 +26,12 @@ class WeatherStation
     float rain;
     float windDir;
     float windSpeed;
-    float tempDS18;
-    float tempBME;
+    float tempDHT;
+    float tempBMP;
     float humidity;
     float pressure;
     float altitude;
-    float lightUV;
-    float lightVisible;
-    float lightIR;
+    float light;
     float batteryVoltage;
     float batteryTemp;
 
@@ -44,7 +41,7 @@ class WeatherStation
     byte pinBatteryVoltage;
     byte pinRef3V3;
     byte pinRain;
-    byte pinDS18;
+    byte pinDHT;
     byte pinWindSpeed;
 
     /* for the function */
@@ -52,9 +49,9 @@ class WeatherStation
     byte activateWindSpeed;
 
     /* Sensors object */
-    DallasTemperature sensorDS18B20;
-    Adafruit_BME280 bme;
-    Adafruit_SI1145 uv;
+    Adafruit_BMP280 bmp;
+    DHT dht;
+
     
     /* attribute for the sensor function */
     volatile long LastWindSpeed;
@@ -81,28 +78,24 @@ class WeatherStation
     float getRain();
     float getWindDir();
     float getWindSpeed();
-    float getTempDS18();
-    float getTempBME();
+    float getTempDHT();
+    float getTempBMP();
     float getHumidity();
     float getPressure();
     float getAltitude();
-    float getLightUV();
-    float getLightVisible();
-    float getLightIR();
+    float getLight();
     float getBatteryVoltage();
     float getBatteryTemp();
 
     void setRain(float value);
     void setWindDir(float value);
     void setWindSpeed(float value);
-    void setTempDS18(float value);
-    void setTempBME(float value);
+    void setTempDHT(float value);
+    void setTempBMP(float value);
     void setHumidity(float value);
     void setPressure(float value);
     void setAltitude(float value);
-    void setLightUV(float value);
-    void setLightVisible(float value);
-    void setLightIR(float value);
+    void setLight(float value);
     void setBatteryVoltage(float value);
     void setBatteryTemp(float value);
 
@@ -110,8 +103,8 @@ class WeatherStation
      * group some function in order to have more readable code
      */
     void setupRainWind(float rain, float windDir, float windSpeed);
-    void setupBME(float temp, float humidity, float pressure, float altitude);
-    void setupLight(float lightUV, float lightVisible, float lightIR);
+    void setupDHT(float temp, float humidity);
+    void setupBMP(float temp, float pressure, float altitude);
     void setupBattery(float batteryVoltage, float batteryTemp);
     
 
@@ -145,20 +138,19 @@ class WeatherStation
     float measureRainGauge();
     float measureWindDir(); // return the angle of the wind
     float measureWindSpeed();
-    float measureTempDS18(); // get the temp from the DS18B20 temp sensor
-    float measureTempBME();
+    float measureTempDHT(); // get the temp from the DS18B20 temp sensor
+    float measureTempBMP();
     float measureHumidity();
     float measurePressure();
     float measureAltitude();
-    float measureLightUV();
-    float measureLightVisible();
-    float measureLightIR();
+    float measureLight();
     float measureBatteryVoltage();
     float measureBatteryTemp();
     
     void sensorReading(); // collect the data on all the sensor and write them in the attribut
 
     float averageWindDirAngle(byte numberOfReadings);
+    int averageAnalogRead(int pinToRead, byte numberOfReadings);
 
 
 };
@@ -176,6 +168,3 @@ float dewPoint(float tempC, float humidity);
 float icingPoint(float tempC, float dewPoint);
 float windChill(float tempC, float windSpeed);
 float heatIndex(float tempC, float humidity);
-
-int averageAnalogRead(int pinToRead);
-int averageAnalogReadAngle(int pin2Read);
