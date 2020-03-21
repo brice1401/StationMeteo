@@ -1,10 +1,12 @@
 #include <math.h>
+#include <Arduino.h>
 #include "weatherStation.h"
 #include <SPI.h>
 #include <Wire.h>
 #include <DHT.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
+
 
 
 /* Creation of a WeatherStation class to store data */
@@ -52,6 +54,7 @@ WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte tem
     while (1);
   }
   Serial.print("Correct initialization of I2C sensor");
+
 
 
   // init the attribute
@@ -323,7 +326,7 @@ float WeatherStation::measureBatteryTemp()
   // coefficient for the temp
   float A = 2.79161 * 0.001; // A = 2,791610E-03
 
-  float B = 2.53917 * 0.0001; // B = 2,539167E-04
+  float B = 2.53917 * 0.0001; // B = 2,539167E-04 
   float tempBattery;
 
   Rt = R1 / ((Vin / Vout) - 1);
@@ -439,7 +442,6 @@ void WeatherStation::setRadioBufferReceive(char* message)
     radioBuffer[i] = message[i];
   }
 }
-
 
 /*******************************************************************************************************/
 /* Weather function for temperature index */

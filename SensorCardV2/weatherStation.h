@@ -1,10 +1,11 @@
+#include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <DHT.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
-#include <Arduino.h>
 #include <math.h>
+
 
 
 #ifndef WeatherStation_H
@@ -45,13 +46,12 @@ class WeatherStation
     byte pinWindSpeed;
 
     /* for the function */
-    int seaLevelPressure;
+    const int seaLevelPressure;
     byte activateWindSpeed;
 
     /* Sensors object */
     Adafruit_BMP280 bmp;
     DHT dht;
-
     
     /* attribute for the sensor function */
     volatile long LastWindSpeed;
@@ -146,6 +146,7 @@ class WeatherStation
     float measureLight();
     float measureBatteryVoltage();
     float measureBatteryTemp();
+
     
     void sensorReading(); // collect the data on all the sensor and write them in the attribut
 
