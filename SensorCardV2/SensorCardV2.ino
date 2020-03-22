@@ -19,10 +19,12 @@ WeatherStation maStationMeteo(pinRain, pinWindDir, pinWindSpeed, pinDHT22, pinBa
 
 
 // Information about time and date
+// Unix time are in minutes and not in seconds
 unsigned long UnixTime;
 unsigned long UnixTimeLastRadio;
 unsigned long UnixTimeLastWakeUp;
-int MinuteBetweenSensor = 3; // number of minute between two sensor acquisition
+DateTime instant; //current state of the rtc
+int MinuteBetweenSend = 10; // number of minute between two sensor acquisition
 
 
 
@@ -43,9 +45,8 @@ void setup()
   Serial.begin(9600);
   
   //Interrupt for wind speed
-  attachInterrupt(digitalPinToInterrupt(pinWindSpeed), callInterruptWindSpeed, FALLING);
   attachInterrupt(digitalPinToInterrupt(pinRain), callInterruptRain, FALLING);
-  interrupts(); //turn on the interrrupt for wind speed 
+  interrupts(); //turn on the interrrupt for rain
 
   // init the RTC
   // use to init the RTC module
@@ -62,12 +63,61 @@ void setup()
     // January 21, 2014 at 3am you would call:
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
   }
+
+  // init of temp variable
+  instant = rtc.now();
+  UnixTimeLastRadio = getUnixTimeM(instant);
+}
+
+
+
+
+void loop(){
+  // the description of the code is explained in the excel document
   
+  //look at the time :
+  instant = rtc.now();
+
+  if(DurationLastSend(UnixTimeLastRadio, instant) > MinuteBetweenSend){
+    //the last message was send X minutes ago
+    //it's time to measure and to send a new message
+
+    // check the wind speed
+    detachInterrupt(digitalPinToInterrupt(pinRain));
+    attachInterrupt(digitalPinToInterrupt(pinWindSpeed), callInterruptWindSpeed, FALLING);
+    maStationMeteo.measureWindSpeed();
+    detachInterrupt(digitalPinToInterrupt(pinWindSpeed));
+    attachInterrupt(digitalPinToInterrupt(pinRain), callInterruptRain, FALLING);
+
+    // measure the direction of the wind
+    maStationMeteo.measureWindDir(127); //measure direction of wind using 127 point of measure
+    //measure T° and %H with DHT22
+    
+
+
+
+    
+    UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
+  }
+
+
+}
+
+unsigned long getUnixTimeM(DateTime instant){
+  unsigned long minutes;
+  minutes = (unsigned long) (instant.unixtime()/60);
+  return(minutes);
+}
+
+int DurationLastSend(unsigned long start, DateTime instant){
+  int duration;
+  duration = int ((unsigned long) (instant.unixtime()/60) - start);
+  return(duration);
 }
 
 /*
 
-Fonction inutile car passe par les calcul avec temps unix
+Fonction inutile car passe par les calculs avec temps unix
 String getDate() {
   DateTime now = rtc.now();
   int Year = now.year();
@@ -83,17 +133,3 @@ String getHoraireHM(){
   String Horaire = String(Hour) + ":" + String(Minute);
   return(Horaire);
 }*/
-
-
-void loop()
-{
-  
-
-  if((1 + MinuteBetweenSensor) % 60 == 1)
-  {// get the data for the sensor every 3 minutes
-
-    //gather all the informations on the sensors
-    maStationMeteo.sensorReading();
-
-  }
-}

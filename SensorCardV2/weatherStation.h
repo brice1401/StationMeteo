@@ -47,7 +47,6 @@ class WeatherStation
 
     /* for the function */
     const int seaLevelPressure;
-    byte activateWindSpeed;
 
     /* Sensors object */
     Adafruit_BMP280 bmp;
@@ -98,14 +97,6 @@ class WeatherStation
     void setLight(float value);
     void setBatteryVoltage(float value);
     void setBatteryTemp(float value);
-
-    /*
-     * group some function in order to have more readable code
-     */
-    void setupRainWind(float rain, float windDir, float windSpeed);
-    void setupDHT(float temp, float humidity);
-    void setupBMP(float temp, float pressure, float altitude);
-    void setupBattery(float batteryVoltage, float batteryTemp);
     
 
     /*
@@ -136,19 +127,25 @@ class WeatherStation
 
     // to get infos from the sensors
     float measureRainGauge();
-    float measureWindDir(); // return the angle of the wind
-    float measureWindSpeed();
-    float measureTempDHT(); // get the temp from the DS18B20 temp sensor
-    float measureTempBMP();
-    float measureHumidity();
-    float measurePressure();
-    float measureAltitude();
-    float measureLight();
-    float measureBatteryVoltage();
-    float measureBatteryTemp();
+    void measureWindDir(byte numberOfReadings); // return the angle of the wind
+    float weatherVaneAngle();
+    void measureWindSpeed();
+    void measureTempDHT(); // get the temp from the DS18B20 temp sensor
+    void measureTempBMP();
+    void measureHumidity();
+    void measurePressure();
+    void measureAltitude();
+    void measureLight();
+    void measureBatteryVoltage();
+    void measureBatteryTemp();
 
-    
-    void sensorReading(); // collect the data on all the sensor and write them in the attribut
+    /*
+     * group some function in order to have more readable code
+     */
+    void measureDHT();
+    void measureBMP();
+    void measureBattery();
+
 
     float averageWindDirAngle(byte numberOfReadings);
     int averageAnalogRead(int pinToRead, byte numberOfReadings);

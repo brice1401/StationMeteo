@@ -65,7 +65,6 @@ WeatherStation::WeatherStation(byte rain, byte windDir, byte windSpeed, byte tem
   LastWindCheck = 0;
 
   seaLevelPres = 101325;
-  activateWindSpeed = 0; //the measure is inactive
 }
 
 //WeatherStation::WeatherStation()
@@ -152,29 +151,6 @@ void WeatherStation::setBatteryTemp(float value) {
   batteryTemp = value;
 }
 
-/*
-   group some function in order to have more readable code
-*/
-void WeatherStation::setupRainWind(float rain, float windDir, float windSpeed) {
-  setRain(rain);
-  setWindDir(windDir);
-  setWindSpeed(windSpeed);
-}
-void WeatherStation::setupDHT(float temp, float humidity) {
-  setHumidity(humidity);
-  setTempDHT(temp);
-}
-void WeatherStation::setupBMP(float temp, float pressure, float altitude) {
-  setTempBMP(temp);
-  setPressure(pressure);
-  setAltitude(altitude);
-
-}
-void WeatherStation::setupBattery(float batteryVoltage, float batteryTemp) {
-  setBatteryVoltage(batteryVoltage);
-  setBatteryTemp(batteryTemp);
-}
-
 
 /*******************************************************************************************************/
 /*
@@ -194,13 +170,10 @@ void WeatherStation::interruptRainGauge()
 
 void WeatherStation::interruptWindSpeed()
 {
-  if (activateWindSpeed)
+  if ((millis() - LastWindSpeed) > 10)
   {
-    if ((millis() - LastWindSpeed) > 10)
-    {
-      WindSpeedClick++;
-      LastWindSpeed = millis();
-    }
+    WindSpeedClick++;
+    LastWindSpeed = millis();
   }
 }
 
@@ -212,27 +185,26 @@ float WeatherStation::measureRainGauge()
   return (RainGaugeInter);
 }
 
-float WeatherStation::measureWindSpeed()
+void WeatherStation::measureWindSpeed()
 {
   //Return the speed of the wind in km/h
-  activateWindSpeed = 1; // activate the interrupt
   unsigned long startReading = millis();
   unsigned long endReading;
-  int durationReading = 5 * 1000;
+  int durationReading = 10 * 1000; //mesure sur 10s
 
   while (millis() - startReading < durationReading) {}
   endReading = millis();
-  activateWindSpeed = 0; // stop the interrupt
 
   float WindSpeed = float(WindSpeedClick) / float((endReading - startReading) / 1000); //frequency of click
 
   WindSpeedClick = 0; //init the counter
   WindSpeed *= 2.4;
 
-  return (WindSpeed);
+  // change th e attribut of the classe
+  setWindSpeed(windSpeed);
 }
 
-float WeatherStation::measureWindDir()
+float WeatherStation::weatherVaneAngle()
 {
   //return the angle forme between the wind and north (north = 0°)
   float WindAnalog = analogRead(pinWindDir);
@@ -255,36 +227,77 @@ float WeatherStation::measureWindDir()
   return (270);
 }
 
-float WeatherStation::measureTempDHT() {
+void WeatherStation::measureWindDir(byte numberOfReadings)
+{
+  // function return the average angle of the wind direction
+  double sumCos = 0;
+  double sumSin = 0;
+  double angleMeasure;
+
+  for (int i = 0; i < numberOfReadings; i++)
+  {
+    angleMeasure = double(weatherVaneAngle());
+    // Calculate the sin and cosine of all angle and add them to calculate the average value
+    sumSin += sin(angleMeasure);
+    sumCos += cos(angleMeasure);
+  }
+
+  sumCos = sumCos / double(numberOfReadings);
+  sumSin = sumSin / double(numberOfReadings);
+
+
+  double angle = atan2(sumSin, sumCos) * 180.0 / 3.14; // atan2(y, x)
+
+  if (angle < 0)
+  { // function atan2 return an angle between -pi and pi,
+    // so if the angle is negative, add 360° to have a result between 0 and 360°
+    angle += 360;
+  }
+  setWindDir(float(angle));
+}
+
+void WeatherStation::measureTempDHT() {
   //get the temperature of the DHT Temp sensor
   float t = dht.readTemperature();
   if (isnan(t)) {
     //si la lecture echoue on renvoie le min qui après la transformation radion donne 0
-    return (-40);
+    setTempDHT(-40);
   }
-  return (t);
+  setTempDHT(t);
 }
-float WeatherStation::measureHumidity() {
+void WeatherStation::measureHumidity() {
   float h = dht.readHumidity();
   if (isnan(h)) {
-    return (0);
+    setHumidity(0);
   }
-  return (h);
+  setHumidity(h);
 }
-float WeatherStation::measureTempBMP() {
-  return (float(bmp.readTemperature()));
+void WeatherStation::measureTempBMP() {
+  float t = float(bmp.readTemperature());
+  if (isnan(t)) {
+    setTempBMP(-40);
+  }
+  setTempBMP(t);
 }
-float WeatherStation::measurePressure() {
-  return (float(bmp.readPressure()));
+void WeatherStation::measurePressure() {
+  float p = float(bmp.readPressure());
+  if (isnan(p)) {
+    setPressure(0);
+  }
+  setPressure(p);
 }
-float WeatherStation::measureAltitude() {
-  return (float(bmp.readAltitude(seaLevelPres)));
+void WeatherStation::measureAltitude() {
+  float a = float(bmp.readAltitude(seaLevelPres));
+    if (isnan(a)) {
+    setAltitude(0);
+  }
+  setAltitude(a);
 }
-float WeatherStation::measureLight() {
-  return (10);
+void WeatherStation::measureLight() {
+  setLight(10);
 }
 
-float WeatherStation::measureBatteryVoltage()
+void WeatherStation::measureBatteryVoltage()
 {
   /*Returns the voltage of the raw pin based on the 3.3V rail
     The battery can ranges from 4.2V down to around 3.3V
@@ -300,10 +313,10 @@ float WeatherStation::measureBatteryVoltage()
   rawVoltage *= operatingVoltage; //Convert the 0 to 1023 int to actual voltage on BATT pin
   rawVoltage *= 4.90; //(3.9k+1k)/1k - multiply BATT voltage by the voltage divider to get actual system voltage
 
-  return (rawVoltage);
+  setBatteryVoltage(rawVoltage);
 }
 
-float WeatherStation::measureBatteryTemp()
+void WeatherStation::measureBatteryTemp()
 {
   // this function take an int corresponding of the value of reading of the thermistor
   // the correlation is make with the equation on :
@@ -333,23 +346,25 @@ float WeatherStation::measureBatteryTemp()
 
   tempBattery = 1 / (A + B * float(log(Rt)));
 
-  return (tempBattery);
+  setBatteryTemp(tempBattery);
 }
 
+/*
+   group some function in order to have more readable code
+*/
+void WeatherStation::measureDHT() {
+  measureHumidity();
+  measureTempDHT();
+}
+void WeatherStation::measureBMP() {
+  measureTempBMP();
+  measurePressure();
+  measureAltitude();
 
-void WeatherStation::sensorReading()
-{
-  /*
-     this fonction read the value from all the sensors
-     write the value inside the attribut of an object of the class
-  */
-
-  setupRainWind(measureRainGauge(), measureWindDir(), measureWindSpeed());
-  setupDHT(measureTempDHT(), measureHumidity());
-  setupBMP(measureTempBMP(), measurePressure(), measureAltitude());
-  setLight(measureLight());
-  setupBattery(measureBatteryVoltage(), measureBatteryTemp());
-
+}
+void WeatherStation::measureBattery() {
+  measureBatteryVoltage();
+  measureBatteryTemp();
 }
 
 /*******************************************************************************************************/
@@ -527,33 +542,4 @@ int WeatherStation::averageAnalogRead(int pinToRead, byte numberOfReadings)
   runningValue /= numberOfReadings;
 
   return (runningValue);
-}
-
-float WeatherStation::averageWindDirAngle(byte numberOfReadings)
-{
-  // function return the average angle of the wind direction
-  double sumCos = 0;
-  double sumSin = 0;
-  double angleMeasure;
-
-  for (int i = 0; i < numberOfReadings; i++)
-  {
-    angleMeasure = double(measureWindDir());
-    // Calculate the sin and cosine of all angle and add them to calculate the average value
-    sumSin += sin(angleMeasure);
-    sumCos += cos(angleMeasure);
-  }
-
-  sumCos = sumCos / double(numberOfReadings);
-  sumSin = sumSin / double(numberOfReadings);
-
-
-  double angle = atan2(sumSin, sumCos) * 180.0 / 3.14; // atan2(y, x)
-
-  if (angle < 0)
-  { // function atan2 return an angle between -pi and pi,
-    // so if the angle is negative, add 360° to have a result between 0 and 360°
-    angle += 360;
-  }
-  return (float(angle));
 }
