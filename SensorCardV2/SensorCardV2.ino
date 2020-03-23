@@ -4,6 +4,9 @@
 #include "weatherStation.h"
 #include "RTClib.h"
 
+// pour le debuggage
+byte affiche = 1;
+
 //Definition des Pins des capteurs
 const byte pinWindSpeed = 3;
 const byte pinRain = 4;
@@ -92,10 +95,41 @@ void loop(){
     // measure the direction of the wind
     maStationMeteo.measureWindDir(127); //measure direction of wind using 127 point of measure
     //measure T° and %H with DHT22
+    maStationMeteo.measureDHT();
+    //measure pressure, temp et altitude with BMP280
+    maStationMeteo.measureBMP();
+    //measure light
+    maStationMeteo.measureLight();
+    //measure infos of the battery
+    maStationMeteo.measureBattery();
+    //add the Temp of the RTC to the data
+    maStationMeteo.setTempRTC(rtc.getTemperature());
     
+    if(affiche){ // display the value of the sensor in the class
+      Serial.println("*************************************************");
+      Serial.print("Mesure à ");
+      Serial.println(getHoraireHM());
+      Serial.println("*************************************************");
+      Serial.print("Pluie : ");
+      Serial.println(maStationMeteo.getRain());
+      Serial.print("Vitesse vent : ");
+      Serial.println(maStationMeteo.getWindSpeed());
+      Serial.print("Direction du vent : ");
+      Serial.println(maStationMeteo.getWindDir());
+      Serial.print("Température DHT22 : ");
+      Serial.println(maStationMeteo.getTempDHT());
+      Serial.print("Humidité : ");
+      Serial.println(maStationMeteo.getHumidity());
+      Serial.print("Pression : ");
+      Serial.println(maStationMeteo.getPressure());
+      Serial.print("Température BMP : ");
+      Serial.println(maStationMeteo.getTempBMP());
+      Serial.print("Température RTC : ");
+      Serial.println(maStationMeteo.getTempRTC());
+    }
 
-
-
+    //element for the radio
+    
     
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
   }
@@ -115,9 +149,7 @@ int DurationLastSend(unsigned long start, DateTime instant){
   return(duration);
 }
 
-/*
 
-Fonction inutile car passe par les calculs avec temps unix
 String getDate() {
   DateTime now = rtc.now();
   int Year = now.year();
@@ -132,4 +164,4 @@ String getHoraireHM(){
   int Minute = now.minute();
   String Horaire = String(Hour) + ":" + String(Minute);
   return(Horaire);
-}*/
+}

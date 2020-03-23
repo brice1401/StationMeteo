@@ -116,6 +116,10 @@ float WeatherStation::getBatteryVoltage() {
 float WeatherStation::getBatteryTemp() {
   return (batteryTemp);
 }
+float WeatherStation::getTempRTC() {
+  return (tempRTC);
+}
+
 
 void WeatherStation::setRain(float value) {
   rain = value;
@@ -150,7 +154,9 @@ void WeatherStation::setBatteryVoltage(float value) {
 void WeatherStation::setBatteryTemp(float value) {
   batteryTemp = value;
 }
-
+void WeatherStation::setTempRTC(float value) {
+  tempRTC = value;
+}
 
 /*******************************************************************************************************/
 /*
@@ -177,12 +183,12 @@ void WeatherStation::interruptWindSpeed()
   }
 }
 
-float WeatherStation::measureRainGauge()
+void WeatherStation::measureRainGauge()
 {
-  // return the rain fell
+  // calculate the rain fell
   float RainGaugeInter = float(RainClick) * 0.28;
   RainClick = 0; // set the rain fall to 0
-  return (RainGaugeInter);
+  setRain(RainGaugeInter);
 }
 
 void WeatherStation::measureWindSpeed()

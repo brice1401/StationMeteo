@@ -35,6 +35,7 @@ class WeatherStation
     float light;
     float batteryVoltage;
     float batteryTemp;
+    float tempRTC;
 
     /* data for the pin of sensors */
     byte pinWindDir;
@@ -85,6 +86,7 @@ class WeatherStation
     float getLight();
     float getBatteryVoltage();
     float getBatteryTemp();
+    float getTempRTC();
 
     void setRain(float value);
     void setWindDir(float value);
@@ -97,24 +99,7 @@ class WeatherStation
     void setLight(float value);
     void setBatteryVoltage(float value);
     void setBatteryTemp(float value);
-    
-
-    /*
-     * function to create the message for the radio
-     */
-    void value2Buff(float value, int start, byte tempTest = false);
-    float buff2Value(int start, byte tempTest = false);
-
-
-    /* for coding, all the data are already inside the object, so it's only necessary to
-     *  create the radioBuffer which is a public attribut of the class
-     *  
-     *  for decoding, the object is create empty and is complete with the information inside the 
-     *  buffer
-     */
-    void codingMessage();
-    void decodingMessage();
-    void setRadioBufferReceive(char* message);
+    void setTempRTC(float value);
     
 
     /*
@@ -126,7 +111,7 @@ class WeatherStation
     void interruptWindSpeed();
 
     // to get infos from the sensors
-    float measureRainGauge();
+    void measureRainGauge();
     void measureWindDir(byte numberOfReadings); // return the angle of the wind
     float weatherVaneAngle();
     void measureWindSpeed();
@@ -149,6 +134,23 @@ class WeatherStation
 
     float averageWindDirAngle(byte numberOfReadings);
     int averageAnalogRead(int pinToRead, byte numberOfReadings);
+
+    /*
+     * function to create the message for the radio
+     */
+    void value2Buff(float value, int start, byte tempTest = false);
+    float buff2Value(int start, byte tempTest = false);
+
+
+    /* for coding, all the data are already inside the object, so it's only necessary to
+     *  create the radioBuffer which is a public attribut of the class
+     *  
+     *  for decoding, the object is create empty and is complete with the information inside the 
+     *  buffer
+     */
+    void codingMessage();
+    void decodingMessage();
+    void setRadioBufferReceive(char* message);
 
 
 };
