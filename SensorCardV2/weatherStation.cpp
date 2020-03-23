@@ -432,6 +432,7 @@ void WeatherStation::codingMessage()
   value2Buff(pressure, 24);
   value2Buff(altitude, 28);
   value2Buff(light, 32);
+  value2Buff(tempRTC, 36, true);
 
   value2Buff(batteryVoltage, 52);
   value2Buff(batteryTemp, 56, true);
@@ -464,6 +465,9 @@ void WeatherStation::setRadioBufferReceive(char* message)
   }
 }
 
+char* WeatherStation::getRadioBuffer(){
+  return(radioBuffer);
+}
 /*******************************************************************************************************/
 /* Weather function for temperature index */
 /*******************************************************************************************************/

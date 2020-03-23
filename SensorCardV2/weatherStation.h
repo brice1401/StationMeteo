@@ -64,7 +64,7 @@ class WeatherStation
 
     
   public :
-    char* radioBuffer[62];
+    char radioBuffer[62];
 
   /* Methods */
   public :
@@ -151,6 +151,7 @@ class WeatherStation
     void codingMessage();
     void decodingMessage();
     void setRadioBufferReceive(char* message);
+    char* getRadioBuffer();
 
 
 };

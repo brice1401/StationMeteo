@@ -129,6 +129,14 @@ void loop(){
     }
 
     //element for the radio
+    maStationMeteo.codingMessage();
+
+    if(affiche){//display element send to the radio
+      Serial.println("*************************************************");
+      Serial.print("Message radio : ");
+      Serial.println(maStationMeteo.getRadioBuffer());
+      Serial.println("*************************************************");
+    }
     
     
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
