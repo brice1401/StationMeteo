@@ -7,6 +7,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
 
+
 // pour le debuggage
 byte affiche = 1;
 
@@ -73,8 +74,10 @@ void interruptWindSpeed()
 
 void setup()
 {
+  Serial.begin(115200);
   LastDisplay = millis();
   i = 1;
+  
   // init serial com and Led to show the start of the code
   Serial.begin(9600);
   Serial.println("debut du code");
@@ -193,16 +196,14 @@ String getHoraireHM(){
 */
 /*******************************************************************************************************/
 
-void measureRainGauge(WeatherStation StationMeteo)
-{
+float measureRainGauge(){
   // calculate the rain fell
   float RainGaugeInter = float(RainClick) * 0.28;
   RainClick = 0; // set the rain fall to 0
-  StationMeteo.setRain(RainGaugeInter);
+  return(RainGaugeInter);
 }
 
-void measureWindSpeed(WeatherStation StationMeteo)
-{
+float measureWindSpeed(){
   //Return the speed of the wind in km/h
   unsigned long endReading;
   int durationReading = 10 * 1000; //mesure sur 10s
@@ -216,11 +217,10 @@ void measureWindSpeed(WeatherStation StationMeteo)
   WindSpeed *= 2.4;
 
   // change the attribut of the classe
-  StationMeteo.setWindSpeed(WindSpeed);
+  return(WindSpeed);
 }
 
-float weatherVaneAngle()
-{
+float weatherVaneAngle(){
   //return the angle forme between the wind and north (north = 0°)
   float WindAnalog = analogRead(pinWindDir);
 
@@ -242,7 +242,7 @@ float weatherVaneAngle()
   return (270);
 }
 
-void measureWindDir(byte numberOfReadings, WeatherStation StationMeteo)
+float measureWindDir(byte numberOfReadings)
 {
   // function return the average angle of the wind direction
   double sumCos = 0;
@@ -268,10 +268,10 @@ void measureWindDir(byte numberOfReadings, WeatherStation StationMeteo)
     // so if the angle is negative, add 360° to have a result between 0 and 360°
     angle += 360;
   }
-  StationMeteo.setWindDir(float(angle));
+  return(float(angle));
 }
 
-void measureBatteryVoltage(WeatherStation StationMeteo)
+float measureBatteryVoltage()
 {
   /*Returns the voltage of the raw pin based on the 3.3V rail
     The battery can ranges from 4.2V down to around 3.3V
@@ -287,7 +287,7 @@ void measureBatteryVoltage(WeatherStation StationMeteo)
   rawVoltage *= operatingVoltage; //Convert the 0 to 1023 int to actual voltage on BATT pin
   rawVoltage *= 4.90; //(3.9k+1k)/1k - multiply BATT voltage by the voltage divider to get actual system voltage
 
-  StationMeteo.setBatteryVoltage(rawVoltage);
+  return(rawVoltage);
 }
 
 int averageAnalogRead(int pinToRead, byte numberOfReadings)
@@ -303,7 +303,7 @@ int averageAnalogRead(int pinToRead, byte numberOfReadings)
   return (runningValue);
 }
 
-void measureBatteryTemp(WeatherStation StationMeteo)
+float measureBatteryTemp()
 {
   // this function take an int corresponding of the value of reading of the thermistor
   // the correlation is make with the equation on :
@@ -333,45 +333,12 @@ void measureBatteryTemp(WeatherStation StationMeteo)
 
   tempBattery = 1 / (A + B * float(log(Rt)));
 
-  StationMeteo.setBatteryTemp(tempBattery);
+  return(tempBattery);
 }
 
 /*
    group some function in order to have more readable code
 */
-void measureDHT(WeatherStation StationMeteo) {
-  //get the temperature and humidity of the DHT Temp sensor
-  float t = dht.readTemperature();
-  float h = dht.readHumidity();
-  if (isnan(t)) {
-    //si la lecture echoue on renvoie le min qui après la transformation radion donne 0
-    StationMeteo.setTempDHT(-40);
-  }
-  else {
-    StationMeteo.setTempDHT(t);
-  }
-  if (isnan(h)) {
-    StationMeteo.setHumidity(0);
-  }
-  else {
-  StationMeteo.setHumidity(h);
-  }
-}
-
-void measureBMP(WeatherStation StationMeteo) {
-  float t = float(bmp.readTemperature());
-  float p = float(bmp.readPressure());
-  float a = float(bmp.readAltitude(seaLevelPressure));
-  StationMeteo.setTempBMP(t);
-  StationMeteo.setPressure(p/100); //pressure in hPa
-  StationMeteo.setAltitude(a);
-  Serial.println(t);
-  Serial.println(p);
-  if(isnan(a)){}
-  else{
-    Serial.println(a);
-    }
-  }
 
 void measureLight(WeatherStation StationMeteo) {
   StationMeteo.setLight(10);
@@ -383,7 +350,6 @@ void loop(){
   //look at the time :
   instant = rtc.now();
 
-  
   //if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSend){ pour. mesures toutes les minutes
   if(DurationLastSendS(UnixTimeLastRadioS, instant) >= SecondBetweenSend){ //pour mesure toutes les 10s
     //the last message was send X minutes ago
@@ -392,23 +358,26 @@ void loop(){
     // check the wind speed
     detachInterrupt(digitalPinToInterrupt(pinRain));
     attachInterrupt(digitalPinToInterrupt(pinWindSpeed), interruptWindSpeed, FALLING);
-    measureWindSpeed(maStationMeteo);
+    maStationMeteo.setWindSpeed(measureWindSpeed());
     detachInterrupt(digitalPinToInterrupt(pinWindSpeed));
     attachInterrupt(digitalPinToInterrupt(pinRain), interruptRainGauge, FALLING);
 
     // measure the direction of the wind
-    measureWindDir(127, maStationMeteo); //measure direction of wind using 127 point of measure
+    maStationMeteo.setWindDir(measureWindDir(100)); //measure direction of wind using 127 point of measure
     //measure T° and %H with DHT22
-    measureDHT(maStationMeteo);
+    maStationMeteo.setTempDHT(dht.readTemperature());
+    maStationMeteo.setHumidity(dht.readHumidity());
     //measure pressure, temp et altitude with BMP280
-    measureBMP(maStationMeteo);
+    maStationMeteo.setTempBMP(bmp.readTemperature());
+    maStationMeteo.setPressure(bmp.readPressure()/100); // pressure in hPa
+    maStationMeteo.setAltitude(bmp.readAltitude(seaLevelPressure));
     //measure light
-    //measureLight(maStationMeteo);
+
     //measure infos of the battery
-    //measureBattery(maStationMeteo);
+
     //add the Temp of the RTC to the data
     maStationMeteo.setTempRTC(rtc.getTemperature());
-    maStationMeteo.setTempDHT(dht.readTemperature());
+    maStationMeteo.setRain(measureRainGauge());
     
     if(affiche){ // display the value of the sensor in the class
       Serial.println("*************************************************");
@@ -439,10 +408,12 @@ void loop(){
     if(affiche){//display element send to the radio
       Serial.println("*************************************************");
       Serial.print("Message radio : ");
+      for(int j=0; j < 62; j++){
+        Serial.print(maStationMeteo.radioBuffer[j]);  
+      }
       Serial.println(maStationMeteo.getRadioBuffer());
       Serial.println("*************************************************");
     }
-    
     
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
     UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message

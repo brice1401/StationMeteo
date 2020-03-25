@@ -24,8 +24,8 @@ WeatherStation::WeatherStation()
   _rain = 0;
   _windDir = 0;
   _windSpeed = 0;
-  _tempDHT = 1;
-  _tempBMP = 2;
+  _tempDHT = 0;
+  _tempBMP = 0;
   _humidity = 0;
   _pressure = 0;
   _altitude = 0;
@@ -138,10 +138,10 @@ void WeatherStation::value2Buff(float value, int start, byte tempTest = false)
     valueInt = int(roundf(value * 10));
   }
 
-  radioBuffer[start] = valueInt & 0xff;
-  radioBuffer[start + 1] = (valueInt >> 8) & 0xff;
-  radioBuffer[start + 2] = (valueInt >> 16) & 0xff;
-  radioBuffer[start + 3] = (valueInt >> 24) & 0xff;
+  radioBuffer[start + 3] = valueInt & 0xff;
+  radioBuffer[start + 2] = (valueInt >> 8) & 0xff;
+  radioBuffer[start + 1] = (valueInt >> 16) & 0xff;
+  radioBuffer[start] = (valueInt >> 24) & 0xff;
 }
 
 float WeatherStation::buff2Value(int start, byte tempTest = false)
@@ -197,7 +197,7 @@ void WeatherStation::decodingMessage()
   _light = buff2Value(32);
 
   _batteryVoltage = buff2Value(52);
-  _batteryTemp = buff2Value(56);
+  _batteryTemp = buff2Value(56, true);
 }
 
 void WeatherStation::setRadioBufferReceive(char* message)
