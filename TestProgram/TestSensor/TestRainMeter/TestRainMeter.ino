@@ -11,7 +11,7 @@ unsigned long LastRain = 0;  // the last time the output pin was toggled
 
 //Definition des Pins des capteurs
 
-const byte PinPluie = 6;
+const byte PinPluie = 4;
 unsigned long LastAffichage;
 
 void setup()

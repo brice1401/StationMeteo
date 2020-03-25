@@ -54,17 +54,16 @@ Adafruit_BMP280 bmp;
 DHT dht(pinDHT22, DHT22);
 
 // Interrrupt
-void interruptRainGauge()
-{
+void interruptRainGauge(){
   if ((millis() - LastRain) > 20)
   {
+    Serial.println("mm de mesuré");
     RainClick++;
     LastRain = millis();
   }
 }
 
-void interruptWindSpeed()
-{
+void interruptWindSpeed(){
   if ((millis() - LastWindSpeed) > 10)
   {
     WindSpeedClick++;
@@ -79,13 +78,12 @@ void setup()
   i = 1;
   
   // init serial com and Led to show the start of the code
-  Serial.begin(9600);
   Serial.println("debut du code");
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
   //definition of pin
-  pinMode(pinRain, INPUT);
+  //pinMode(pinRain, INPUT);
   pinMode(pinWindDir, INPUT);
   pinMode(pinWindSpeed, INPUT);
   pinMode(pinBatteryVoltage, INPUT);
@@ -93,7 +91,7 @@ void setup()
 
   //init of variable for the code
   LastWindSpeed = 0;
-  LastRain = 0;
+  LastRain = millis();
   WindSpeedClick = 0;
   RainClick = 0;
   LastWindCheck = 0;
@@ -351,17 +349,23 @@ void loop(){
   instant = rtc.now();
 
   //if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSend){ pour. mesures toutes les minutes
-  if(DurationLastSendS(UnixTimeLastRadioS, instant) >= SecondBetweenSend){ //pour mesure toutes les 10s
+  
+  if(DurationLastSendS(UnixTimeLastRadioS, instant) >= 10){ 
+    //pour mesure toutes les 10s
     //the last message was send X minutes ago
     //it's time to measure and to send a new message
 
     // check the wind speed
-    detachInterrupt(digitalPinToInterrupt(pinRain));
-    attachInterrupt(digitalPinToInterrupt(pinWindSpeed), interruptWindSpeed, FALLING);
+    /*
+    detachInterrupt(pinRain);
+    attachInterrupt(pinWindSpeed, interruptWindSpeed, FALLING);
+    interrupts();
     maStationMeteo.setWindSpeed(measureWindSpeed());
-    detachInterrupt(digitalPinToInterrupt(pinWindSpeed));
-    attachInterrupt(digitalPinToInterrupt(pinRain), interruptRainGauge, FALLING);
-
+    detachInterrupt(pinWindSpeed);
+    attachInterrupt(pinRain, interruptRainGauge, FALLING);
+    interrupts();
+    */
+    
     // measure the direction of the wind
     maStationMeteo.setWindDir(measureWindDir(100)); //measure direction of wind using 127 point of measure
     //measure T° and %H with DHT22
@@ -377,6 +381,8 @@ void loop(){
 
     //add the Temp of the RTC to the data
     maStationMeteo.setTempRTC(rtc.getTemperature());
+    Serial.print("Nombre de click : ");
+    Serial.println(RainClick);
     maStationMeteo.setRain(measureRainGauge());
     
     if(affiche){ // display the value of the sensor in the class
@@ -409,7 +415,7 @@ void loop(){
       Serial.println("*************************************************");
       Serial.print("Message radio : ");
       for(int j=0; j < 62; j++){
-        Serial.print(maStationMeteo.radioBuffer[j]);  
+        Serial.print(maStationMeteo.radioBuffer[j], HEX);  
       }
       Serial.println(maStationMeteo.getRadioBuffer());
       Serial.println("*************************************************");
