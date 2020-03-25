@@ -18,7 +18,7 @@ const byte pinBatteryVoltage = A7;
 const byte pinRef3V3 = A3;
 
 // creation of the object
-//WeatherStation maStationMeteo(pinRain, pinWindDir, pinWindSpeed, pinDHT22, pinBatteryVoltage, pinBatteryTemp, pinRef3V3);
+WeatherStation maStationMeteo(pinRain, pinWindDir, pinWindSpeed, pinDHT22, pinBatteryVoltage, pinBatteryTemp, pinRef3V3);
 
 
 // Information about time and date
@@ -34,10 +34,10 @@ int MinuteBetweenSend = 1; // number of minute between two sensor acquisition
 
 // call for the interrupts
 void callInterruptWindSpeed(){
-  //maStationMeteo.interruptWindSpeed();
+  maStationMeteo.interruptWindSpeed();
 }
 void callInterruptRain(){
-  //maStationMeteo.interruptRainGauge();
+  maStationMeteo.interruptRainGauge();
 }
 
 RTC_DS3231 rtc;
@@ -92,22 +92,22 @@ void loop(){
     // check the wind speed
     detachInterrupt(digitalPinToInterrupt(pinRain));
     attachInterrupt(digitalPinToInterrupt(pinWindSpeed), callInterruptWindSpeed, FALLING);
-    //maStationMeteo.measureWindSpeed();
+    maStationMeteo.measureWindSpeed();
     detachInterrupt(digitalPinToInterrupt(pinWindSpeed));
     attachInterrupt(digitalPinToInterrupt(pinRain), callInterruptRain, FALLING);
 
     // measure the direction of the wind
-    //maStationMeteo.measureWindDir(127); //measure direction of wind using 127 point of measure
+    maStationMeteo.measureWindDir(127); //measure direction of wind using 127 point of measure
     //measure T° and %H with DHT22
-    //maStationMeteo.measureDHT();
+    maStationMeteo.measureDHT();
     //measure pressure, temp et altitude with BMP280
-    //maStationMeteo.measureBMP();
+    maStationMeteo.measureBMP();
     //measure light
-    //maStationMeteo.measureLight();
+    maStationMeteo.measureLight();
     //measure infos of the battery
-    //maStationMeteo.measureBattery();
+    maStationMeteo.measureBattery();
     //add the Temp of the RTC to the data
-    //maStationMeteo.setTempRTC(rtc.getTemperature());
+    maStationMeteo.setTempRTC(rtc.getTemperature());
     
     if(affiche){ // display the value of the sensor in the class
       Serial.println("*************************************************");
@@ -115,30 +115,30 @@ void loop(){
       Serial.println(getHoraireHM());
       Serial.println("*************************************************");
       Serial.print("Pluie : ");
-      //Serial.println(maStationMeteo.getRain());
+      Serial.println(maStationMeteo.getRain());
       Serial.print("Vitesse vent : ");
-      //Serial.println(maStationMeteo.getWindSpeed());
+      Serial.println(maStationMeteo.getWindSpeed());
       Serial.print("Direction du vent : ");
-      //Serial.println(maStationMeteo.getWindDir());
+      Serial.println(maStationMeteo.getWindDir());
       Serial.print("Température DHT22 : ");
-      //Serial.println(maStationMeteo.getTempDHT());
+      Serial.println(maStationMeteo.getTempDHT());
       Serial.print("Humidité : ");
-      //Serial.println(maStationMeteo.getHumidity());
+      Serial.println(maStationMeteo.getHumidity());
       Serial.print("Pression : ");
-      //Serial.println(maStationMeteo.getPressure());
+      Serial.println(maStationMeteo.getPressure());
       Serial.print("Température BMP : ");
-      //Serial.println(maStationMeteo.getTempBMP());
+      Serial.println(maStationMeteo.getTempBMP());
       Serial.print("Température RTC : ");
-      //Serial.println(maStationMeteo.getTempRTC());
+      Serial.println(maStationMeteo.getTempRTC());
     }
 
     //element for the radio
-    //maStationMeteo.codingMessage();
+    maStationMeteo.codingMessage();
 
     if(affiche){//display element send to the radio
       Serial.println("*************************************************");
       Serial.print("Message radio : ");
-      //Serial.println(maStationMeteo.getRadioBuffer());
+      Serial.println(maStationMeteo.getRadioBuffer());
       Serial.println("*************************************************");
     }
     

@@ -269,35 +269,45 @@ void WeatherStation::measureTempDHT() {
     //si la lecture echoue on renvoie le min qui après la transformation radion donne 0
     setTempDHT(-40);
   }
+  else {
   setTempDHT(t);
+  }
 }
 void WeatherStation::measureHumidity() {
   float h = dht.readHumidity();
   if (isnan(h)) {
     setHumidity(0);
   }
+  else {
   setHumidity(h);
+  }
 }
 void WeatherStation::measureTempBMP() {
   float t = float(bmp.readTemperature());
   if (isnan(t)) {
     setTempBMP(-40);
   }
+  else {
   setTempBMP(t);
+  }
 }
 void WeatherStation::measurePressure() {
   float p = float(bmp.readPressure());
   if (isnan(p)) {
     setPressure(0);
   }
+  else {
   setPressure(p);
+  }
 }
 void WeatherStation::measureAltitude() {
   float a = float(bmp.readAltitude(seaLevelPres));
     if (isnan(a)) {
     setAltitude(0);
   }
+  else {
   setAltitude(a);
+  }
 }
 void WeatherStation::measureLight() {
   setLight(10);
@@ -547,8 +557,9 @@ int WeatherStation::averageAnalogRead(int pinToRead, byte numberOfReadings)
   // function return the average value read from an analog input
   unsigned int runningValue = 0;
 
-  for (int x = 0 ; x < numberOfReadings ; x++)
+  for (int x = 0 ; x < numberOfReadings ; x++){
     runningValue += analogRead(pinToRead);
+  }
   runningValue /= numberOfReadings;
 
   return (runningValue);

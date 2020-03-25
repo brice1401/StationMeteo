@@ -1,15 +1,8 @@
 #include <Arduino.h>
-#include <SPI.h>
-#include <Wire.h>
-#include <DHT.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP280.h>
 #include <math.h>
 
-
-
-#ifndef WeatherStation_H
-#define WeatherStation_H
+#ifndef WeatherStation_h
+#define WeatherStation_h
 
 
 /* Creation of a WeatherStation class to store data 
@@ -24,43 +17,20 @@ class WeatherStation
   /* Attributes */
   private :
     /* data on weather */
-    float rain;
-    float windDir;
-    float windSpeed;
-    float tempDHT;
-    float tempBMP;
-    float humidity;
-    float pressure;
-    float altitude;
-    float light;
-    float batteryVoltage;
-    float batteryTemp;
-    float tempRTC;
+    float _rain;
+    float _windDir;
+    float _windSpeed;
+    float _tempDHT;
+    float _tempBMP;
+    float _humidity;
+    float _pressure;
+    float _altitude;
+    float _light;
+    float _batteryVoltage;
+    float _batteryTemp;
+    float _tempRTC;
 
-    /* data for the pin of sensors */
-    byte pinWindDir;
-    byte pinBatteryTemp;
-    byte pinBatteryVoltage;
-    byte pinRef3V3;
-    byte pinRain;
-    byte pinDHT;
-    byte pinWindSpeed;
 
-    /* for the function */
-    const int seaLevelPressure;
-
-    /* Sensors object */
-    Adafruit_BMP280 bmp;
-    DHT dht;
-    
-    /* attribute for the sensor function */
-    volatile long LastWindSpeed;
-    volatile unsigned long LastRain;
-    volatile unsigned int WindSpeedClick;
-    volatile byte RainClick; //use a byte to avoid problem went executing the interrupt
-    long LastWindCheck;
-
-    int seaLevelPres; // pressure at the sea level to calculate the altitude
 
     
   public :
@@ -69,9 +39,7 @@ class WeatherStation
   /* Methods */
   public :
     /* Constructor and destructor */
-    WeatherStation(byte rain, byte windDir, byte windSpeed, byte DS18, 
-                   byte batteryVoltage, byte batteryTemp, byte ref3V3); // constructor for the sensor card
-    WeatherStation::WeatherStation(); // constructor for the receptor
+    WeatherStation(); // constructor for the sensor card
     ~WeatherStation();
 
     /* get and set methods */
@@ -101,40 +69,7 @@ class WeatherStation
     void setBatteryTemp(float value);
     void setTempRTC(float value);
     
-
-    /*
-     * fonction to get the sensor value (and batterie)
-     */
-
-    // for the interrupt
-    void interruptRainGauge();
-    void interruptWindSpeed();
-
-    // to get infos from the sensors
-    void measureRainGauge();
-    void measureWindDir(byte numberOfReadings); // return the angle of the wind
-    float weatherVaneAngle();
-    void measureWindSpeed();
-    void measureTempDHT(); // get the temp from the DS18B20 temp sensor
-    void measureTempBMP();
-    void measureHumidity();
-    void measurePressure();
-    void measureAltitude();
-    void measureLight();
-    void measureBatteryVoltage();
-    void measureBatteryTemp();
-
-    /*
-     * group some function in order to have more readable code
-     */
-    void measureDHT();
-    void measureBMP();
-    void measureBattery();
-
-
-    float averageWindDirAngle(byte numberOfReadings);
-    int averageAnalogRead(int pinToRead, byte numberOfReadings);
-
+ 
     /*
      * function to create the message for the radio
      */
