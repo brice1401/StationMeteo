@@ -25,13 +25,13 @@ class WeatherStation
     float _humidity;
     float _pressure;
     float _altitude;
-    float _light;
     float _batteryVoltage;
     float _batteryTemp;
     float _tempRTC;
-
-
-
+    float _light;
+    float _lightRed;
+    float _lightGreen;
+    float _lightBlue;
     
   public :
     char radioBuffer[62];
@@ -52,6 +52,9 @@ class WeatherStation
     float getPressure();
     float getAltitude();
     float getLight();
+    float getLightRed();
+    float getLightGreen();
+    float getLightBlue();
     float getBatteryVoltage();
     float getBatteryTemp();
     float getTempRTC();
@@ -65,6 +68,9 @@ class WeatherStation
     void setPressure(float value);
     void setAltitude(float value);
     void setLight(float value);
+    void setLightRed(float value);
+    void setLightGreen(float value);
+    void setLightBlue(float value);
     void setBatteryVoltage(float value);
     void setBatteryTemp(float value);
     void setTempRTC(float value);

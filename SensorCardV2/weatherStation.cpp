@@ -71,6 +71,15 @@ float WeatherStation::getAltitude() {
 float WeatherStation::getLight() {
   return (_light);
 }
+float WeatherStation::getLightRed() {
+  return (_lightRed);
+}
+float WeatherStation::getLightGreen() {
+  return (_lightGreen);
+}
+float WeatherStation::getLightBlue() {
+  return (_lightBlue);
+}
 float WeatherStation::getBatteryVoltage() {
   return (_batteryVoltage);
 }
@@ -108,6 +117,15 @@ void WeatherStation::setAltitude(float value) {
 }
 void WeatherStation::setLight(float value) {
   _light = value;
+}
+void WeatherStation::setLightRed(float value) {
+  _lightRed = value;
+}
+void WeatherStation::setLightGreen(float value) {
+  _lightGreen = value;
+}
+void WeatherStation::setLightBlue(float value) {
+  _lightBlue = value;
 }
 void WeatherStation::setBatteryVoltage(float value) {
   _batteryVoltage = value;
@@ -177,8 +195,9 @@ void WeatherStation::codingMessage()
   value2Buff(_tempBMP, 20, true);
   value2Buff(_pressure, 24);
   value2Buff(_altitude, 28);
-  value2Buff(_light, 32);
-  value2Buff(_tempRTC, 36, true);
+  value2Buff(_tempRTC, 32, true);
+  value2Buff(_light, 36);
+
 
   value2Buff(_batteryVoltage, 52);
   value2Buff(_batteryTemp, 56, true);
@@ -194,7 +213,8 @@ void WeatherStation::decodingMessage()
   _tempBMP = buff2Value(20, true);
   _pressure = buff2Value(24);
   _altitude = buff2Value(28);
-  _light = buff2Value(32);
+  _tempRTC = buff2Value(32, true);
+  _light = buff2Value(36);
 
   _batteryVoltage = buff2Value(52);
   _batteryTemp = buff2Value(56, true);

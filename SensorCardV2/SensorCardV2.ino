@@ -8,6 +8,8 @@
 #include <Adafruit_BMP280.h>
 #include "BH1745NUC.h"
 
+#include <SD.h>
+
 
 // pour le debuggage
 byte affiche = 1;
@@ -28,6 +30,8 @@ const byte pinRef3V3 = A3;
 const byte pinBatteryTemp = A6;
 const byte pinBatteryVoltage = A7;
 
+const byte pinCSsd = 4;
+String Filename = "datalog.txt"; 
 
 // creation of the object
 WeatherStation maStationMeteo;
@@ -38,7 +42,7 @@ unsigned long UnixTime;
 unsigned long UnixTimeLastRadio;
 unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
-int MinuteBetweenSend = 1; // number of minute between two sensor acquisition
+int MinuteBetweenSend = 5; // number of minute between two sensor acquisition
 
 
 // def of variable for code of sensor functions
@@ -124,6 +128,7 @@ void setup()
   }
 
   //Init the BH1745 (light sensor)
+  bh.Initialize();
   if(!bh.begin()){
     Serial.println(F("Could not find a valid BH1745 sensor, check wiring!"));
     errorSensor = 1;
@@ -137,8 +142,15 @@ void setup()
     errorSensor = 1;
   }
 
+  //init the Sd card on the ethernet shield
+  if (!SD.begin(pinCSsd)) {
+    Serial.println("Card failed, or not present");
+    errorSensor = 1;
+  }
+  
   if(errorSensor == 1){
     // Stop the programme
+    Serial.println("There is (at least) one error, so the program has to stop");
     while(1);
   }
   
@@ -164,6 +176,9 @@ void setup()
                   Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                   Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+
+  
+  digitalWrite(LED_BUILTIN, HIGH); // switch off the led once the setup is finish
   
 }
 
@@ -211,6 +226,10 @@ String getHoraireHM(){
   int Minute = now.minute();
   String Horaire = String(Hour) + ":" + String(Minute);
   return(Horaire);
+}
+String getMomentDatalog(){
+  String moment = getDate() + ";" + getHoraireHM() + ";";
+  return(moment);
 }
 
 /*******************************************************************************************************/
@@ -266,8 +285,7 @@ float weatherVaneAngle(){
   return (270);
 }
 
-float measureWindDir(byte numberOfReadings)
-{
+float measureWindDir(byte numberOfReadings){
   // function return the average angle of the wind direction
   double sumCos = 0;
   double sumSin = 0;
@@ -295,78 +313,65 @@ float measureWindDir(byte numberOfReadings)
   return(float(angle));
 }
 
-float measureBatteryVoltage()
-{
-  /*Returns the voltage of the raw pin based on the 3.3V rail
-    The battery can ranges from 4.2V down to around 3.3V
-    This function allows us to ignore what VCC might be (an Arduino plugged into USB has VCC of 4.5 to 5.2V)
-    The weather shield has a pin called RAW (VIN) fed through through two 5% resistors and connected to A2 (BATT):
-    3.9K on the high side (R1), and 1K on the low side (R2)
-  */
-
-  float operatingVoltage = averageAnalogRead(pinRef3V3, 16);
-  float rawVoltage = averageAnalogRead(pinBatteryVoltage, 16);
-
-  operatingVoltage = 3.30 / operatingVoltage;
-  rawVoltage *= operatingVoltage; //Convert the 0 to 1023 int to actual voltage on BATT pin
-  rawVoltage *= 4.90; //(3.9k+1k)/1k - multiply BATT voltage by the voltage divider to get actual system voltage
-
-  return(rawVoltage);
-}
-
-int averageAnalogRead(int pinToRead, byte numberOfReadings)
-{
+int averageAnalogRead(int pinToRead, byte numberOfReadings){
   // function return the average value read from an analog input
   unsigned int runningValue = 0;
 
   for (int x = 0 ; x < numberOfReadings ; x++){
     runningValue += analogRead(pinToRead);
+    delay(10); // add a delay of 10ms between two measure
   }
   runningValue /= numberOfReadings;
 
   return (runningValue);
 }
 
-float measureBatteryTemp()
-{
+float measureBatteryVoltage(){
+  /*
+   * Return the voltage of the battery
+   * 
+   */
+
+  float referenceVoltageAnalog = averageAnalogRead(pinRef3V3, 64);
+  float voltageBattAnalog = averageAnalogRead(pinBatteryVoltage, 64);
+
+  float VoltageDropOut = 3.302;
+
+  float voltageBatt = voltageBattAnalog * VoltageDropOut / referenceVoltageAnalog;
+  return(voltageBatt);
+}
+
+float measureBatteryTemp(){
   // this function take an int corresponding of the value of reading of the thermistor
   // the correlation is make with the equation on :
   // https://en.wikipedia.org/wiki/Thermistor
   // it use only the parameter A and B, linearity between 1/T and ln(R)
-  // 1/T = A + b*ln(Rt)
+  // 1/T = A + b*ln(R)
 
-  // It use a voltage divider
-  // https://en.wikipedia.org/wiki/Voltage_divider
-  // Z1 = 10kohm
-  // Z2 is the thermistor
-  // Vin = 5V
-  // Vout = readingThermistor
+  // Be carefull of the value of Vin (voltage of the input source)
+  // and the resistance value are in kohm
 
   int readingThermistor = averageAnalogRead(pinBatteryTemp, 16); // get the value of the pin
-  float R1 = 10; // serie resistor in kohm
-  float Vin = 5;
+  float R1 = 9.93; // serie resistor in kohm
+  float Vin = 4.827;
   float Rt; // value of reisitivity of the thermistor
-  float Vout = float(readingThermistor) * 5 / 1023;
+  float Vout = float(readingThermistor) * Vin / 1023;
   // coefficient for the temp
   float A = 2.79161 * 0.001; // A = 2,791610E-03
 
-  float B = 2.53917 * 0.0001; // B = 2,539167E-04 
+  float B = 2.53917 * 0.0001; // B = 2,539167E-04
   float tempBattery;
 
   Rt = R1 / ((Vin / Vout) - 1);
 
-  tempBattery = 1 / (A + B * float(log(Rt)));
-
-  return(tempBattery);
+  tempBattery = 1 / (A + B * float(log(Rt))); //Temp en Kelvin
+  tempBattery -= 273.15;
+  return (tempBattery);
 }
 
 /*
    group some function in order to have more readable code
 */
-
-void measureLight(WeatherStation StationMeteo) {
-  StationMeteo.setLight(10);
-}
 
 void loop(){
 
@@ -381,9 +386,9 @@ void loop(){
   //look at the time :
   instant = rtc.now();
 
-  //if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSend){ pour. mesures toutes les minutes
+  if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSend){ //pour. mesures toutes les minutes
   
-  if(DurationLastSendS(UnixTimeLastRadioS, instant) >= 10){ 
+  //if(DurationLastSendS(UnixTimeLastRadioS, instant) >= 10){ 
     //pour mesure toutes les 10s
     //the last message was send X minutes ago
     //it's time to measure and to send a new message
@@ -409,7 +414,10 @@ void loop(){
     maStationMeteo.setPressure(bmp.readPressure()/100); // pressure in hPa
     maStationMeteo.setAltitude(bmp.readAltitude(seaLevelPressure));
     //measure light
-
+    maStationMeteo.setLight(bh.getClearColor());
+    maStationMeteo.setLightRed(bh.getRedColor());
+    maStationMeteo.setLightGreen(bh.getGreenColor());
+    maStationMeteo.setLightBlue(bh.getBlueColor());
     //measure infos of the battery
 
     //add the Temp of the RTC to the data
@@ -439,6 +447,14 @@ void loop(){
       Serial.println(maStationMeteo.getTempBMP());
       Serial.print("Température RTC : ");
       Serial.println(maStationMeteo.getTempRTC());
+      Serial.print("Lumière claire : ");
+      Serial.println(maStationMeteo.getLight());
+      Serial.print("Lumière rouge : ");
+      Serial.println(maStationMeteo.getLightRed());
+      Serial.print("Lumière verte : ");
+      Serial.println(maStationMeteo.getLightGreen());
+      Serial.print("Lumière bleue : ");
+      Serial.println(maStationMeteo.getLightBlue());
     }
 
     //element for the radio
@@ -456,5 +472,55 @@ void loop(){
     
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
     UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message
+
+    writeDataSD();
+  }
+}
+
+void writeDataSD(){
+  File dataFile = SD.open("datalog.txt", FILE_WRITE);
+
+  if(dataFile){
+    // the file is available, we can write on it
+    dataFile.print("Rain;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getRain());
+    dataFile.print("Wind Speed");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getWindSpeed());
+    dataFile.print("Wind Direction;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getWindDir());
+    dataFile.print("TempDHT22;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getTempDHT());
+    dataFile.print("Humidity;");
+    dataFile.println(maStationMeteo.getHumidity());
+    dataFile.print("Pressure");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getPressure());
+    dataFile.print("TempBMP;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getTempBMP());
+    dataFile.print("TempRTC;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getTempRTC());
+    dataFile.print("Light;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getLight());
+    dataFile.print("RedLight;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getLightRed());
+    dataFile.print("LightGreen;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getLightGreen());
+    dataFile.print("LightBlue;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(maStationMeteo.getLightBlue());
+    dataFile.close();
+  }
+  // if the file isn't open, pop up an error:
+  else {
+    Serial.println("error opening datalog.txt");
   }
 }

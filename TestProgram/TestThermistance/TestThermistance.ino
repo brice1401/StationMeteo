@@ -5,7 +5,7 @@ const byte pinBatteryTemp = A6;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  
+
 }
 
 
@@ -14,7 +14,7 @@ int averageAnalogRead(int pinToRead, byte numberOfReadings)
   // function return the average value read from an analog input
   unsigned int runningValue = 0;
 
-  for (int x = 0 ; x < numberOfReadings ; x++){
+  for (int x = 0 ; x < numberOfReadings ; x++) {
     runningValue += analogRead(pinToRead);
   }
   runningValue /= numberOfReadings;
@@ -30,30 +30,24 @@ float measureBatteryTemp()
   // it use only the parameter A and B, linearity between 1/T and ln(R)
   // 1/T = A + b*ln(R)
 
-  // It use a voltage divider
-  // https://en.wikipedia.org/wiki/Voltage_divider
-  // Z1 = 10kohm
-  // Z2 is the thermistor
-  // Vin = 5V
-  // Vout = readingThermistor
+  // Be carefull of the value of Vin (voltage of the input source)
 
   int readingThermistor = averageAnalogRead(pinBatteryTemp, 16); // get the value of the pin
-  float R1 = 9.9; // serie resistor in kohm
-  float Vin = 4.84;
+  float R1 = 9.93; // serie resistor in kohm
+  float Vin = 4.827;
   float Rt; // value of reisitivity of the thermistor
   float Vout = float(readingThermistor) * Vin / 1023;
   // coefficient for the temp
   float A = 2.79161 * 0.001; // A = 2,791610E-03
 
-  float B = 2.53917 * 0.0001; // B = 2,539167E-04 
+  float B = 2.53917 * 0.0001; // B = 2,539167E-04
   float tempBattery;
 
   Rt = R1 / ((Vin / Vout) - 1);
 
   tempBattery = 1 / (A + B * float(log(Rt))); //Temp en Kelvin
   tempBattery -= 273.15;
-
-  return(tempBattery);
+  return (tempBattery);
 }
 
 
