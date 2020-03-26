@@ -6,10 +6,17 @@
 #include <DHT.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
+#include "BH1745NUC.h"
 
 
 // pour le debuggage
 byte affiche = 1;
+byte loopLaunch = 1;
+unsigned long UnixTimeLastRadioS;
+int SecondBetweenSend = 1;
+unsigned long LastDisplay;
+int countdown;
+int i;
 
 //Definition des Pins des capteurs
 const byte pinWindSpeed = 3;
@@ -32,11 +39,7 @@ unsigned long UnixTimeLastRadio;
 unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
 int MinuteBetweenSend = 1; // number of minute between two sensor acquisition
-unsigned long UnixTimeLastRadioS;
-int SecondBetweenSend = 1;
-unsigned long LastDisplay;
-int countdown;
-int i;
+
 
 // def of variable for code of sensor functions
 volatile long LastWindSpeed;
@@ -52,6 +55,8 @@ int seaLevelPressure; // pressure at the sea level to calculate the altitude
 RTC_DS3231 rtc;
 Adafruit_BMP280 bmp;
 DHT dht(pinDHT22, DHT22);
+BH1745NUC bh;
+
 
 // Interrrupt
 void interruptRainGauge(){
@@ -100,15 +105,43 @@ void setup()
   
   //Interrupt for wind speed
   attachInterrupt(digitalPinToInterrupt(pinRain), interruptRainGauge, FALLING);
+  attachInterrupt(digitalPinToInterrupt(pinWindSpeed), interruptWindSpeed, FALLING);
   interrupts(); //turn on the interrrupt for rain
+
+  /*
+   * Init the sensor and I2C devices
+   */
+
+  byte errorSensor = 0;
+  
+  //init DHT
+  dht.begin();
+
+  //init the BMP
+  if (!bmp.begin()) {
+    Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
+    errorSensor = 1;
+  }
+
+  //Init the BH1745 (light sensor)
+  if(!bh.begin()){
+    Serial.println(F("Could not find a valid BH1745 sensor, check wiring!"));
+    errorSensor = 1;
+  }
 
   // init the RTC
   // use to init the RTC module
   // load the time from your computer.
   if (! rtc.begin())  {
     Serial.println("rtc is NOT running!");
-    while (1);
+    errorSensor = 1;
   }
+
+  if(errorSensor == 1){
+    // Stop the programme
+    while(1);
+  }
+  
   if (rtc.lostPower()) {
     Serial.println("RTC lost power, lets set the time!");
     // following line sets the RTC to the date & time this sketch was compiled
@@ -123,15 +156,7 @@ void setup()
   UnixTimeLastRadio = getUnixTimeM(instant);
   UnixTimeLastRadioS = getUnixTimeS(instant);
 
-
-  //init DHT
-  dht.begin();
-
-  //init the BMP
-  if (!bmp.begin()) {
-    Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
-    while (1);
-  }
+  
 
   /* Default settings from datasheet. */
   bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
@@ -205,13 +230,14 @@ float measureWindSpeed(){
   //Return the speed of the wind in km/h
   unsigned long endReading;
   int durationReading = 10 * 1000; //mesure sur 10s
-  WindSpeedClick = 0; //init the counter before counting
   unsigned long startReading = millis();
 
+  WindSpeedClick = 0; //init the counter before counting
   while (millis() - startReading < durationReading) {} //counting during the defined duration
   endReading = millis();
 
   float WindSpeed = float(WindSpeedClick) / float((endReading - startReading) / 1000); //frequency of click
+  WindSpeedClick = 0; //init the counter after counting
   WindSpeed *= 2.4;
 
   // change the attribut of the classe
@@ -307,7 +333,7 @@ float measureBatteryTemp()
   // the correlation is make with the equation on :
   // https://en.wikipedia.org/wiki/Thermistor
   // it use only the parameter A and B, linearity between 1/T and ln(R)
-  // 1/T = A + b*ln(R)
+  // 1/T = A + b*ln(Rt)
 
   // It use a voltage divider
   // https://en.wikipedia.org/wiki/Voltage_divider
@@ -317,7 +343,7 @@ float measureBatteryTemp()
   // Vout = readingThermistor
 
   int readingThermistor = averageAnalogRead(pinBatteryTemp, 16); // get the value of the pin
-  float R1 = 10000; // resistor of the divisor tension to readthe
+  float R1 = 10; // serie resistor in kohm
   float Vin = 5;
   float Rt; // value of reisitivity of the thermistor
   float Vout = float(readingThermistor) * 5 / 1023;
@@ -343,6 +369,13 @@ void measureLight(WeatherStation StationMeteo) {
 }
 
 void loop(){
+
+  // chack if the loop is launched
+  if (loopLaunch == 1){
+    Serial.println("La boucle est lancée");
+    loopLaunch = 0;
+  }
+  
   // the description of the code is explained in the excel document
   
   //look at the time :
@@ -424,6 +457,4 @@ void loop(){
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
     UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message
   }
-
-
 }
