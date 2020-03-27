@@ -25,10 +25,11 @@ const byte pinWindSpeed = 3;
 const byte pinRain = 4;
 const byte pinDHT22 = 5;
 
-const byte pinWindDir = A2;
-const byte pinRef3V3 = A3;
-const byte pinBatteryTemp = A6;
-const byte pinBatteryVoltage = A7;
+const byte pinBatteryTemp = A1;
+const byte pinBatteryVoltage = A2;
+const byte pinWindDir = A6;
+const byte pinRef3V3 = A7;
+
 
 const byte pinCSsd = 4;
 String Filename = "datalog.txt"; 
@@ -178,7 +179,7 @@ void setup()
                   Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
 
   
-  digitalWrite(LED_BUILTIN, HIGH); // switch off the led once the setup is finish
+  digitalWrite(LED_BUILTIN, LOW); // switch off the led once the setup is finish
   
 }
 
@@ -378,6 +379,7 @@ void loop(){
   // chack if the loop is launched
   if (loopLaunch == 1){
     Serial.println("La boucle est lancée");
+    blinkLed13();
     loopLaunch = 0;
   }
   
@@ -408,24 +410,28 @@ void loop(){
     
     // measure the direction of the wind
     maStationMeteo.setWindDir(measureWindDir(100)); //measure direction of wind using 127 point of measure
+    
     //measure T° and %H with DHT22
     maStationMeteo.setTempDHT(dht.readTemperature());
     maStationMeteo.setHumidity(dht.readHumidity());
+    
     //measure pressure, temp et altitude with BMP280
     maStationMeteo.setTempBMP(bmp.readTemperature());
     maStationMeteo.setPressure(bmp.readPressure()/100); // pressure in hPa
     maStationMeteo.setAltitude(bmp.readAltitude(seaLevelPressure));
+    
     //measure light
     maStationMeteo.setLight(bh.getClearColor());
     maStationMeteo.setLightRed(bh.getRedColor());
     maStationMeteo.setLightGreen(bh.getGreenColor());
     maStationMeteo.setLightBlue(bh.getBlueColor());
+    
     //measure infos of the battery
 
     //add the Temp of the RTC to the data
     maStationMeteo.setTempRTC(rtc.getTemperature());
-    Serial.print("Nombre de click : ");
-    Serial.println(RainClick);
+
+    //measure the rain fell
     maStationMeteo.setRain(measureRainGauge());
     
     if(affiche){ // display the value of the sensor in the class
@@ -525,5 +531,16 @@ void writeDataSD(){
   // if the file isn't open, pop up an error:
   else {
     Serial.println("error opening datalog.txt");
+  }
+}
+
+void blinkLed13(){
+  //blink the LED on pin 13 of the board
+
+  for(int k=0; k<20; k++){
+
+    digitalWrite(LED_BUILTIN, HIGH); //switch on the led
+    delay(50);
+    digitalWrite(LED_BUILTIN, LOW);//switch of the led
   }
 }
