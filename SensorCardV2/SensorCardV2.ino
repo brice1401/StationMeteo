@@ -487,7 +487,7 @@ void writeDataSD(){
     dataFile.print("Rain;");
     dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getRain());
-    dataFile.print("Wind Speed");
+    dataFile.print("Wind Speed;");
     dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getWindSpeed());
     dataFile.print("Wind Direction;");
@@ -497,8 +497,9 @@ void writeDataSD(){
     dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getTempDHT());
     dataFile.print("Humidity;");
+    dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getHumidity());
-    dataFile.print("Pressure");
+    dataFile.print("Pressure;");
     dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getPressure());
     dataFile.print("TempBMP;");
