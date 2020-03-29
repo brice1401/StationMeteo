@@ -26,7 +26,7 @@ const byte pinRain = 4;
 const byte pinDHT22 = 5;
 
 const byte pinBatteryTemp = A1;
-const byte pinBatteryVoltage = A2;
+const byte pinBatteryVoltage = A7;
 const byte pinWindDir = A6;
 const byte pinRef3V3 = A7;
 
@@ -341,15 +341,14 @@ float measureBatteryVoltage(){
   /*
    * Return the voltage of the battery
    * 
-   */
+   */  
 
-  float referenceVoltageAnalog = averageAnalogRead(pinRef3V3, 64);
-  float voltageBattAnalog = averageAnalogRead(pinBatteryVoltage, 64);
-
-  float VoltageDropOut = 3.302;
-
-  float voltageBatt = voltageBattAnalog * VoltageDropOut / referenceVoltageAnalog;
-  return(voltageBatt);
+  float measuredvbat = averageAnalogRead(pinBatteryVoltage, 64); //read the battery voltage using 64 points of measure
+  measuredvbat *= 2; // we divided by 2, so multiply back
+  measuredvbat *= 3.3; // Multiply by 3.3V, our reference voltage
+  measuredvbat /= 1024; // convert to voltage
+  
+  return(measuredvbat);
 }
 
 float measureBatteryTemp(){
