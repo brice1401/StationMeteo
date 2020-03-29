@@ -450,7 +450,6 @@ void loop(){
       displayData();
     }
 
-    
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
     UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message
 
