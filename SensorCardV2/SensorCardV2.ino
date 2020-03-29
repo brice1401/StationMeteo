@@ -43,7 +43,7 @@ unsigned long UnixTime;
 unsigned long UnixTimeLastRadio;
 unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
-int MinuteBetweenSend = 2; // number of minute between two sensor acquisition
+int MinuteBetweenSave = 2; // number of minute between two sensor acquisition
 
 
 // def of variable for code of sensor functions
@@ -121,12 +121,14 @@ void setup()
   
   //init DHT
   dht.begin();
+  Serial.println("DHT OK");
 
   //init the BMP
   if (!bmp.begin()) {
     Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
     errorSensor = 1;
   }
+  Serial.println("BMP OK");
 
   //Init the BH1745 (light sensor)
   bh.Initialize();
@@ -134,6 +136,7 @@ void setup()
     Serial.println(F("Could not find a valid BH1745 sensor, check wiring!"));
     errorSensor = 1;
   }
+  Serial.println("BH1745 OK");
 
   // init the RTC
   // use to init the RTC module
@@ -142,11 +145,18 @@ void setup()
     Serial.println("rtc is NOT running!");
     errorSensor = 1;
   }
+  Serial.println("RTC OK");
 
   //init the Sd card on the ethernet shield
   if (!SD.begin(pinCSsd)) {
     Serial.println("Card failed, or not present");
     errorSensor = 1;
+  }
+  Serial.println("SD OK");
+  File dataFile = SD.open(Filename);
+  if(dataFile){
+    SD.remove(Filename);
+    Serial.println("Le fichier existe déjà, il a été supprimé");
   }
   
   if(errorSensor == 1){
@@ -180,7 +190,7 @@ void setup()
 
   
   digitalWrite(LED_BUILTIN, LOW); // switch off the led once the setup is finish
-  
+  Serial.println("Fin du setup");
 }
 
 
@@ -229,7 +239,7 @@ String getHoraireHM(){
   return(Horaire);
 }
 String getMomentDatalog(){
-  String moment = getDate() + ";" + getHoraireHM() + ";";
+  String moment = getDate() + " " + getHoraireHM() + ";";
   return(moment);
 }
 
@@ -268,21 +278,21 @@ float weatherVaneAngle(){
   //return the angle forme between the wind and north (north = 0°)
   float WindAnalog = analogRead(pinWindDir);
 
-  if (WindAnalog < 76) return (112.5);
-  if (WindAnalog < 91) return (67.5);
+  if (WindAnalog < 76) return (113);
+  if (WindAnalog < 91) return (68);
   if (WindAnalog < 113) return (90);
-  if (WindAnalog < 161) return (157.5);
+  if (WindAnalog < 161) return (158);
   if (WindAnalog < 221) return (135);
-  if (WindAnalog < 274) return (202.5);
+  if (WindAnalog < 274) return (203);
   if (WindAnalog < 359) return (180);
-  if (WindAnalog < 451) return (22.5);
+  if (WindAnalog < 451) return (23);
   if (WindAnalog < 551) return (45);
-  if (WindAnalog < 639) return (247.5);
+  if (WindAnalog < 639) return (248);
   if (WindAnalog < 693) return (225);
-  if (WindAnalog < 774) return (337.5);
+  if (WindAnalog < 774) return (336);
   if (WindAnalog < 839) return (0);
-  if (WindAnalog < 891) return (292.5);
-  if (WindAnalog < 951) return (315);
+  if (WindAnalog < 891) return (293);
+  if (WindAnalog < 951) return (313);
   return (270);
 }
 
@@ -376,8 +386,9 @@ float measureBatteryTemp(){
 
 void loop(){
 
-  // chack if the loop is launched
   if (loopLaunch == 1){
+    // done this only one time
+    // to show that the loop is launch
     Serial.println("La boucle est lancée");
     blinkLed13();
     loopLaunch = 0;
@@ -387,12 +398,10 @@ void loop(){
   
   //look at the time :
   instant = rtc.now();
-  Serial.println((DurationLastSend(UnixTimeLastRadio, instant)));
-  delay(10*1000);
-
-  if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSend){ //pour. mesures toutes les minutes
   
-  //if(DurationLastSendS(UnixTimeLastRadioS, instant) >= 10){ 
+  if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSave){ //pour mesures toutes les minutes
+  
+  //if(DurationLastSendS(UnixTimeLastRadioS, instant) >= 15){ 
     //pour mesure toutes les 10s
     //the last message was send X minutes ago
     //it's time to measure and to send a new message
@@ -433,50 +442,14 @@ void loop(){
 
     //measure the rain fell
     maStationMeteo.setRain(measureRainGauge());
-    
-    if(affiche){ // display the value of the sensor in the class
-      Serial.println("*************************************************");
-      Serial.print("Mesure à ");
-      Serial.println(getHoraireHM());
-      Serial.println("*************************************************");
-      Serial.print("Pluie : ");
-      Serial.println(maStationMeteo.getRain());
-      Serial.print("Vitesse vent : ");
-      Serial.println(maStationMeteo.getWindSpeed());
-      Serial.print("Direction du vent : ");
-      Serial.println(maStationMeteo.getWindDir());
-      Serial.print("Température DHT22 : ");
-      Serial.println(maStationMeteo.getTempDHT());
-      Serial.print("Humidité : ");
-      Serial.println(maStationMeteo.getHumidity());
-      Serial.print("Pression : ");
-      Serial.println(maStationMeteo.getPressure());
-      Serial.print("Température BMP : ");
-      Serial.println(maStationMeteo.getTempBMP());
-      Serial.print("Température RTC : ");
-      Serial.println(maStationMeteo.getTempRTC());
-      Serial.print("Lumière claire : ");
-      Serial.println(maStationMeteo.getLight());
-      Serial.print("Lumière rouge : ");
-      Serial.println(maStationMeteo.getLightRed());
-      Serial.print("Lumière verte : ");
-      Serial.println(maStationMeteo.getLightGreen());
-      Serial.print("Lumière bleue : ");
-      Serial.println(maStationMeteo.getLightBlue());
-    }
 
     //element for the radio
     maStationMeteo.codingMessage();
-
-    if(affiche){//display element send to the radio
-      Serial.println("*************************************************");
-      Serial.print("Message radio : ");
-      for(int j=0; j < 62; j++){
-        Serial.print(maStationMeteo.radioBuffer[j], HEX);  
-      }
-      Serial.println(maStationMeteo.getRadioBuffer());
-      Serial.println("*************************************************");
+    
+    if(affiche){ // display the value of the sensor in the class
+      displayData();
     }
+
     
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
     UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message
@@ -540,7 +513,48 @@ void blinkLed13(){
   for(int k=0; k<20; k++){
 
     digitalWrite(LED_BUILTIN, HIGH); //switch on the led
-    delay(50);
+    delay(100);
     digitalWrite(LED_BUILTIN, LOW);//switch of the led
   }
+}
+
+void displayData(){
+  // display the data on the serial
+
+  Serial.println("*************************************************");
+  Serial.print("Mesure à ");
+  Serial.println(getMomentDatalog());
+  Serial.println("*************************************************");
+  Serial.print("Pluie : ");
+  Serial.println(maStationMeteo.getRain());
+  Serial.print("Vitesse vent : ");
+  Serial.println(maStationMeteo.getWindSpeed());
+  Serial.print("Direction du vent : ");
+  Serial.println(maStationMeteo.getWindDir());
+  Serial.print("Température DHT22 : ");
+  Serial.println(maStationMeteo.getTempDHT());
+  Serial.print("Humidité : ");
+  Serial.println(maStationMeteo.getHumidity());
+  Serial.print("Pression : ");
+  Serial.println(maStationMeteo.getPressure());
+  Serial.print("Température BMP : ");
+  Serial.println(maStationMeteo.getTempBMP());
+  Serial.print("Température RTC : ");
+  Serial.println(maStationMeteo.getTempRTC());
+  Serial.print("Lumière claire : ");
+  Serial.println(maStationMeteo.getLight());
+  Serial.print("Lumière rouge : ");
+  Serial.println(maStationMeteo.getLightRed());
+  Serial.print("Lumière verte : ");
+  Serial.println(maStationMeteo.getLightGreen());
+  Serial.print("Lumière bleue : ");
+  Serial.println(maStationMeteo.getLightBlue());
+
+  Serial.println("*************************************************");
+  Serial.print("Message radio : ");
+  for(int j=0; j < 62; j++){
+    Serial.print(maStationMeteo.radioBuffer[j], HEX);  
+  }
+  Serial.println(maStationMeteo.getRadioBuffer());
+  Serial.println("*************************************************");
 }

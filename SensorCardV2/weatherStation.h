@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <math.h>
+#include <stdlib.h>;
 
 #ifndef WeatherStation_h
 #define WeatherStation_h
@@ -35,6 +36,7 @@ class WeatherStation
     
   public :
     char radioBuffer[62];
+    String _iconName;
 
   /* Methods */
   public :
@@ -74,13 +76,15 @@ class WeatherStation
     void setBatteryVoltage(float value);
     void setBatteryTemp(float value);
     void setTempRTC(float value);
+
+    void windDirAngle2Direction();
     
  
     /*
      * function to create the message for the radio
      */
-    void value2Buff(float value, int start, byte tempTest = false);
-    float buff2Value(int start, byte tempTest = false);
+    void value2Buff(float value, int start, bool tempTest = false);
+    float buff2Value(int start, bool tempTest = false);
 
 
     /* for coding, all the data are already inside the object, so it's only necessary to

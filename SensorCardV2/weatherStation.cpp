@@ -1,6 +1,7 @@
 #include <math.h>
 #include <Arduino.h>
 #include "weatherStation.h"
+#include <stdlib.h>;
 
 
 
@@ -33,6 +34,8 @@ WeatherStation::WeatherStation()
   _batteryVoltage = 0;
   _batteryTemp = 0;
   _tempRTC = 0;
+  _iconName = "";
+  
 }
 
 
@@ -137,11 +140,21 @@ void WeatherStation::setTempRTC(float value) {
   _tempRTC = value;
 }
 
+void WeatherStation::windDirAngle2Direction(){
+  // set the string value for the icon in the adafruitIO
+  int angle =  _windDir;
+  String iconName = "w:wind__from-";
+  
+  angle = (angle + 180) % 360;
+  iconName = iconName + String(angle) + "-deg";
+  _iconName = iconName;
+  }
+
 /*******************************************************************************************************/
 /* Function for radio message */
 /*******************************************************************************************************/
 
-void WeatherStation::value2Buff(float value, int start, byte tempTest = false)
+void WeatherStation::value2Buff(float value, int start, bool tempTest)
 {
   // this fonction transforme the value in int
   // then write the value in the 4 byte starting at start
@@ -162,7 +175,7 @@ void WeatherStation::value2Buff(float value, int start, byte tempTest = false)
   radioBuffer[start] = (valueInt >> 24) & 0xff;
 }
 
-float WeatherStation::buff2Value(int start, byte tempTest = false)
+float WeatherStation::buff2Value(int start, bool tempTest)
 {
   int valueInt;
   byte byte1 = radioBuffer[start]; // compter de gauche à droite
