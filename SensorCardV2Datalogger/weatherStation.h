@@ -19,6 +19,8 @@ class WeatherStation
   private :
     /* data on weather */
     float _rain;
+  	float _rain24h[24];
+	  float _rain7d[7];
     float _windDir;
     float _windSpeed;
     float _tempDHT;
@@ -33,6 +35,7 @@ class WeatherStation
     float _lightRed;
     float _lightGreen;
     float _lightBlue;
+	
     
   public :
     char radioBuffer[62];
@@ -46,6 +49,8 @@ class WeatherStation
 
     /* get and set methods */
     float getRain();
+  	float getRain24h();
+  	float getRain7d();
     float getWindDir();
     float getWindSpeed();
     float getTempDHT();
@@ -60,8 +65,11 @@ class WeatherStation
     float getBatteryVoltage();
     float getBatteryTemp();
     float getTempRTC();
+	
 
     void setRain(float value);
+    void setRain24h(float value, int indice);
+    void setRain7d(float value, int indice);
     void setWindDir(float value);
     void setWindSpeed(float value);
     void setTempDHT(float value);
@@ -78,6 +86,9 @@ class WeatherStation
     void setTempRTC(float value);
 
     void windDirAngle2Direction();
+
+    void addRain24h(float value, int indice);
+    void addRain7d(float value, int indice);
     
  
     /*

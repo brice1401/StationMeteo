@@ -28,8 +28,6 @@ const byte pinDHT22 = 5;
 const byte pinBatteryTemp = A1;
 const byte pinBatteryVoltage = A7;
 const byte pinWindDir = A6;
-const byte pinRef3V3 = A7;
-
 
 const byte pinCSsd = 4;
 String Filename = "datalog.txt"; 
@@ -44,6 +42,8 @@ unsigned long UnixTimeLastRadio;
 unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
 int MinuteBetweenSave = 2; // number of minute between two sensor acquisition
+uint8_t lastDay;
+uint8_t lastHour;
 
 
 // def of variable for code of sensor functions
@@ -178,6 +178,8 @@ void setup()
   instant = rtc.now();
   UnixTimeLastRadio = getUnixTimeM(instant);
   UnixTimeLastRadioS = getUnixTimeS(instant);
+  lastDay = instant.dayOfTheWeek();
+  lastHour = instant.hour();
 
   
 
@@ -224,17 +226,15 @@ int DurationLastSendS(unsigned long start, DateTime instant){
 }
 
 String getDate() {
-  DateTime now = rtc.now();
-  int Year = now.year();
-  int Month = now.month();
-  int Day = now.day();
+  int Year = instant.year();
+  int Month = instant.month();
+  int Day = instant.day();
   String Date = String(Day) + '/' + String(Month) + '/' + String(Year);
   return(Date);
 }
 String getHoraireHM(){
-  DateTime now = rtc.now();
-  int Hour = now.hour();
-  int Minute = now.minute();
+  int Hour = instant.hour();
+  int Minute = instant.minute();
   String Horaire = String(Hour) + ":" + String(Minute);
   return(Horaire);
 }
@@ -398,7 +398,8 @@ void loop(){
   //look at the time :
   instant = rtc.now();
   
-  if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSave){ //pour mesures toutes les minutes
+  if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSave){ 
+    //pour mesures toutes les XX minutes
   
   //if(DurationLastSendS(UnixTimeLastRadioS, instant) >= 15){ 
     //pour mesure toutes les 10s
@@ -440,7 +441,23 @@ void loop(){
     maStationMeteo.setTempRTC(rtc.getTemperature());
 
     //measure the rain fell
-    maStationMeteo.setRain(measureRainGauge());
+    float rainMM = measureRainGauge();
+    
+    if(instant.hour() != lastHour){
+      // the hour has changed
+       maStationMeteo.setRain24h(0, instant.hour());
+       lastHour = instant.hour();
+    }
+    if(instant.dayOfTheWeek() != lastDay){
+      // the day has changed
+      maStationMeteo.setRain7d(0, instant.dayOfTheWeek());
+      lastDay = instant.dayOfTheWeek();
+    }
+    
+    maStationMeteo.setRain(rainMM);
+    maStationMeteo.addRain24h(rainMM, instant.hour());
+    maStationMeteo.addRain7d(rainMM, instant.dayOfTheWeek());
+    
 
     //element for the radio
     maStationMeteo.codingMessage();

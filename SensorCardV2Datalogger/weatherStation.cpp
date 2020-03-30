@@ -35,6 +35,13 @@ WeatherStation::WeatherStation()
   _batteryTemp = 0;
   _tempRTC = 0;
   _iconName = "";
+
+  for(int i=0; i<7; i++){
+    _rain7d[i] = 0;
+  }
+  for(int i=0; i<24; i++){
+    _rain24h[i] = 0;
+  }
   
 }
 
@@ -49,6 +56,20 @@ WeatherStation::~WeatherStation() {
 
 float WeatherStation::getRain() {
   return (_rain);
+}
+float WeatherStation::getRain24h() {
+  float sumRain = 0;
+  for(int i=0; i<24; i++){
+    sumRain += _rain24h[i];
+  }
+  return (sumRain);
+}
+float WeatherStation::getRain7d() {
+  float sumRain = 0;
+  for(int i=0; i<7; i++){
+    sumRain += _rain7d[i];
+  }
+  return (sumRain);
 }
 float WeatherStation::getWindDir() {
   return (_windDir);
@@ -96,6 +117,12 @@ float WeatherStation::getTempRTC() {
 
 void WeatherStation::setRain(float value) {
   _rain = value;
+}
+void WeatherStation::setRain24h(float value, int indice) {
+  _rain24h[indice] = value;
+}
+void WeatherStation::setRain7d(float value, int indice) {
+  _rain7d[indice] = value;
 }
 void WeatherStation::setWindDir(float value) {
   _windDir = value;
@@ -149,6 +176,13 @@ void WeatherStation::windDirAngle2Direction(){
   iconName = iconName + String(angle) + "-deg";
   _iconName = iconName;
   }
+
+void WeatherStation::addRain24h(float value, int indice) {
+  _rain24h[indice] += value;
+}
+void WeatherStation::addRain7d(float value, int indice) {
+  _rain7d[indice] += value;
+}
 
 /*******************************************************************************************************/
 /* Function for radio message */
