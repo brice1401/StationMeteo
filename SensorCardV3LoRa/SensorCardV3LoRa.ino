@@ -1,7 +1,6 @@
 /*
  * this program is for the sensor card
  * the card is a feather M0 with a LoRa 433MHz module on it
- * 
  */
 
 //Ajout des librairies
@@ -13,8 +12,8 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
 #include "BH1745NUC.h"
-
-#include <SD.h>
+#include <RHReliableDatagram.h>
+#include <RH_RF95.h>
 
 
 // pour le debuggage
@@ -36,10 +35,6 @@ const byte pinBatteryVoltage = A7;
 const byte pinWindDir = A6;
 const byte pinRef3V3 = A7;
 
-
-const byte pinCSsd = 4;
-String Filename = "datalog.txt"; 
-
 // creation of the object
 WeatherStation maStationMeteo;
 
@@ -59,14 +54,25 @@ volatile unsigned int WindSpeedClick;
 volatile byte RainClick; //use a byte to avoid problem went executing the interrupt
 long LastWindCheck;
 
-int seaLevelPressure; // pressure at the sea level to calculate the altitude
-
 
 // init libraries of sensor
 RTC_DS3231 rtc;
 Adafruit_BMP280 bmp;
 DHT dht(pinDHT22, DHT22);
 BH1745NUC bh;
+
+// init the parameter for the radio
+#define CLIENT_ADDRESS 1
+#define SERVER_ADDRESS 2
+
+// Singleton instance of the radio driver
+RH_RF95 driver;
+
+// Class to manage message delivery and receipt, using the driver declared above
+RHReliableDatagram manager(driver, CLIENT_ADDRESS);
+
+// Dont put this on the stack:
+uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
 
 
 // Interrrupt
@@ -111,8 +117,6 @@ void setup()
   WindSpeedClick = 0;
   RainClick = 0;
   LastWindCheck = 0;
-
-  seaLevelPressure = 101325;
   
   //Interrupt for wind speed
   attachInterrupt(digitalPinToInterrupt(pinRain), interruptRainGauge, FALLING);
@@ -153,17 +157,6 @@ void setup()
   }
   Serial.println("RTC OK");
 
-  //init the Sd card on the ethernet shield
-  if (!SD.begin(pinCSsd)) {
-    Serial.println("Card failed, or not present");
-    errorSensor = 1;
-  }
-  Serial.println("SD OK");
-  File dataFile = SD.open(Filename);
-  if(dataFile){
-    SD.remove(Filename);
-    Serial.println("Le fichier existe déjà, il a été supprimé");
-  }
   
   if(errorSensor == 1){
     // Stop the programme
@@ -194,6 +187,14 @@ void setup()
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                   Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
 
+
+  // setup for the radio
+  if (!manager.init()){
+    Serial.println("init of the radio failed");
+  }
+  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+  // you can set transmitter powers from 5 to 23 dBm:
+  //driver.setTxPower(23, false);
   
   digitalWrite(LED_BUILTIN, LOW); // switch off the led once the setup is finish
   Serial.println("Fin du setup");
@@ -432,13 +433,12 @@ void loop(){
     //measure pressure, temp et altitude with BMP280
     maStationMeteo.setTempBMP(bmp.readTemperature());
     maStationMeteo.setPressure(bmp.readPressure()/100); // pressure in hPa
-    maStationMeteo.setAltitude(bmp.readAltitude(seaLevelPressure));
     
-    //measure light
-    maStationMeteo.setLight(bh.getClearColor());
-    maStationMeteo.setLightRed(bh.getRedColor());
-    maStationMeteo.setLightGreen(bh.getGreenColor());
-    maStationMeteo.setLightBlue(bh.getBlueColor());
+    //measure light, divide by 100, to have smaller number (less than 2^15)
+    maStationMeteo.setLight(bh.getClearColor()/100);
+    maStationMeteo.setLightRed(bh.getRedColor()/100);
+    maStationMeteo.setLightGreen(bh.getGreenColor()/100);
+    maStationMeteo.setLightBlue(bh.getBlueColor()/100);
     
     //measure infos of the battery
 
@@ -458,56 +458,27 @@ void loop(){
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
     UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message
 
-    writeDataSD();
-  }
-}
 
-void writeDataSD(){
-  File dataFile = SD.open("datalog.txt", FILE_WRITE);
-
-  if(dataFile){
-    // the file is available, we can write on it
-    dataFile.print("Rain;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getRain());
-    dataFile.print("Wind Speed;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getWindSpeed());
-    dataFile.print("Wind Direction;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getWindDir());
-    dataFile.print("TempDHT22;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getTempDHT());
-    dataFile.print("Humidity;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getHumidity());
-    dataFile.print("Pressure;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getPressure());
-    dataFile.print("TempBMP;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getTempBMP());
-    dataFile.print("TempRTC;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getTempRTC());
-    dataFile.print("Light;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getLight());
-    dataFile.print("RedLight;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getLightRed());
-    dataFile.print("LightGreen;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getLightGreen());
-    dataFile.print("LightBlue;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getLightBlue());
-    dataFile.close();
+    // Sending the data through the LoRa radio
+    // the data are inside maStationMeteo._radioBuffer
+    if (manager.sendtoWait(maStationMeteo._radioBuffer, sizeof(maStationMeteo._radioBuffer), SERVER_ADDRESS)){
+      // Now wait for a reply from the server
+      uint8_t len = sizeof(buf);
+      uint8_t from;   
+      if (manager.recvfromAckTimeout(buf, &len, 2000, &from)){
+        Serial.print("got reply from : 0x");
+        Serial.print(from, HEX);
+        Serial.print(": ");
+        Serial.println((char*)buf);
+      }
+      else{
+        Serial.println("No reply, is rf95_reliable_datagram_server running?");
+      }
+    }
+    else{
+      Serial.println("sendtoWait failed");
   }
-  // if the file isn't open, pop up an error:
-  else {
-    Serial.println("error opening datalog.txt");
+    
   }
 }
 
@@ -557,8 +528,7 @@ void displayData(){
   Serial.println("*************************************************");
   Serial.print("Message radio : ");
   for(int j=0; j < 62; j++){
-    Serial.print(maStationMeteo.radioBuffer[j], HEX);  
+    Serial.print(maStationMeteo._radioBuffer[j], HEX);  
   }
-  Serial.println(maStationMeteo.getRadioBuffer());
   Serial.println("*************************************************");
 }

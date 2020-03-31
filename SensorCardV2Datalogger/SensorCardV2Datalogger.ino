@@ -424,10 +424,9 @@ void loop(){
     maStationMeteo.setTempDHT(dht.readTemperature());
     maStationMeteo.setHumidity(dht.readHumidity());
     
-    //measure pressure, temp et altitude with BMP280
+    //measure pressure and temp with BMP280
     maStationMeteo.setTempBMP(bmp.readTemperature());
     maStationMeteo.setPressure(bmp.readPressure()/100); // pressure in hPa
-    maStationMeteo.setAltitude(bmp.readAltitude(seaLevelPressure));
     
     //measure light
     maStationMeteo.setLight(bh.getClearColor());
