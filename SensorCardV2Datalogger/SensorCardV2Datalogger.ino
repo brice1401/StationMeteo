@@ -7,6 +7,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
 #include "BH1745NUC.h"
+#include <LiquidCrystal_I2C.h>
 
 #include <SD.h>
 
@@ -16,7 +17,6 @@ byte affiche = 1;
 byte loopLaunch = 1;
 unsigned long UnixTimeLastRadioS;
 int SecondBetweenSend = 1;
-unsigned long LastDisplay;
 int countdown;
 int i;
 
@@ -53,7 +53,24 @@ volatile unsigned int WindSpeedClick;
 volatile byte RainClick; //use a byte to avoid problem went executing the interrupt
 long LastWindCheck;
 
-int seaLevelPressure; // pressure at the sea level to calculate the altitude
+
+//variable for LCD screen
+const byte PinChangeEcran = A3;
+bool Affichage;
+bool LastDisplay; //to avoid blinking
+String MessageLCD0; //message on upper line
+String MessageLCD1; //message on lower line
+int NumEcran;
+int PositionChange;
+int LastPositionChange;
+unsigned long LastdebounceTimeChange = 0;
+
+//Temps d'affichage des valeurs sur l'écran
+const int TimeAffichageMax = 5; //time to display data (s)
+unsigned long TimeAffichageCourant = 0;
+unsigned long debutAffichage = 0;
+unsigned long LastdebounceTime = 0;  // the last time the output pin was toggled
+unsigned int debounceDelay = 500;    // the debounce time; increase if the output flickers
 
 
 // init libraries of sensor
@@ -61,6 +78,10 @@ RTC_DS3231 rtc;
 Adafruit_BMP280 bmp;
 DHT dht(pinDHT22, DHT22);
 BH1745NUC bh;
+
+//Init LCD display
+// Set the LCD address to 0x27 for a 16 chars and 2 line display
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 
 // Interrrupt
@@ -81,10 +102,16 @@ void interruptWindSpeed(){
   }
 }
 
+int PositionButton(int EntreeAnalog){
+  // si bouton appuie : 1
+  //On fait un changement de boutton que lorsque l'on passe de 1 à 0
+  if(EntreeAnalog > 900) return(1);
+  return(0);
+}
+
 void setup()
 {
   Serial.begin(115200);
-  LastDisplay = millis();
   i = 1;
   
   // init serial com and Led to show the start of the code
@@ -106,7 +133,6 @@ void setup()
   RainClick = 0;
   LastWindCheck = 0;
 
-  seaLevelPressure = 101325;
   
   //Interrupt for wind speed
   attachInterrupt(digitalPinToInterrupt(pinRain), interruptRainGauge, FALLING);
@@ -153,11 +179,16 @@ void setup()
     errorSensor = 1;
   }
   Serial.println("SD OK");
+  
   File dataFile = SD.open(Filename);
+  /*
   if(dataFile){
     SD.remove(Filename);
     Serial.println("Le fichier existe déjà, il a été supprimé");
-  }
+  }*/
+
+  // init the LCD
+  lcd.begin();
   
   if(errorSensor == 1){
     // Stop the programme
@@ -189,6 +220,14 @@ void setup()
                   Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                   Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+
+
+  //Initilisation des position des boutons pour l'affichage
+  Affichage = false; //parametre d'affichage
+  LastDisplay = false;
+  NumEcran = 0;
+  PositionChange = PositionButton(analogRead(PinChangeEcran));
+  LastPositionChange = PositionChange;
 
   
   digitalWrite(LED_BUILTIN, LOW); // switch off the led once the setup is finish
@@ -379,9 +418,71 @@ float measureBatteryTemp(){
   return (tempBattery);
 }
 
+/*******************************************************************************************************/
 /*
-   group some function in order to have more readable code
+   Function for LCD Display
 */
+/*******************************************************************************************************/
+
+void displaySelection(int numero){
+
+  switch(numero){
+    case 0:
+      MessageLCD0 = "Temperature DHT:";
+      MessageLCD1 = String(maStationMeteo.getTempDHT()) + " °C";
+      break;
+
+    case 1:
+      MessageLCD0 = "Humidite :";
+      MessageLCD1 = String(maStationMeteo.getHumidity()) + " %";
+      break;
+
+    case 2:
+      MessageLCD0 = "Temp BMP :";
+      MessageLCD1 = String(maStationMeteo.getTempBMP()) + " °C";
+      break;
+      
+    case 3:
+      MessageLCD0 = "Pression :";
+      MessageLCD1 = String(maStationMeteo.getPressure()) + " hPa";
+      break; 
+    case 4:
+      MessageLCD0 = "Temperature RTC:";
+      MessageLCD1 = String(maStationMeteo.getTempRTC()) + " °C";
+      break;
+    case 5:
+      MessageLCD0 = "Luminosite :";
+      MessageLCD1 = String(maStationMeteo.getLight()) + " Lux";
+      break;
+    case 6:
+      MessageLCD0 = "Lumiere rouge :";
+      MessageLCD1 = String(maStationMeteo.getLightRed()) + " ?";
+      break;
+    case 7:
+      MessageLCD0 = "Lumiere verte :";
+      MessageLCD1 = String(maStationMeteo.getLightGreen()) + " ?";
+      break;
+    case 8:
+      MessageLCD0 = "Lumiere bleue :";
+      MessageLCD1 = String(maStationMeteo.getLightBlue()) + " ?";
+      break;
+    case 9:
+      MessageLCD0 = "Point de Rosee :";
+      MessageLCD1 = String(dewPoint(maStationMeteo.getTempDHT(), maStationMeteo.getHumidity())) + " °C";
+      break;
+    case 10:
+      MessageLCD0 = "Heat index :";
+      MessageLCD1 = String(heatIndex(maStationMeteo.getTempDHT(), maStationMeteo.getHumidity())) + " °C";
+      break;   
+  }
+}
+
+
+/*******************************************************************************************************/
+/*
+   Function loop
+*/
+/*******************************************************************************************************/
 
 void loop(){
 
@@ -470,6 +571,57 @@ void loop(){
 
     writeDataSD();
   }
+
+  /*
+   * To display data on the LCD : 
+   */
+
+  PositionChange = PositionButton(analogRead(PinChangeEcran));
+  if(PositionChange != LastPositionChange){
+    LastdebounceTimeChange = millis();
+    }
+  if(((millis() - LastdebounceTimeChange) > debounceDelay) && (true)){
+    if(PositionChange == 1){
+      NumEcran = ((NumEcran + 1) % 11) ;
+      Affichage = true;
+      LastDisplay = false; //to force the update of the display
+      LastdebounceTimeChange = millis();
+      debutAffichage = long(millis()/1000); // reinit of the display timer
+  
+  
+      //Init the line to display
+      displaySelection(NumEcran); 
+    }
+  }
+  LastPositionChange = PositionChange;
+
+
+  TimeAffichageCourant = long(millis()/1000) - debutAffichage;
+  if(TimeAffichageCourant > TimeAffichageMax){
+    //regarde depuis combien de temps c'est affiche, on coupe si trop longptemps
+    Affichage = false;
+  }
+
+  if(Affichage && !LastDisplay)
+  { //management of the display
+    lcd.backlight();
+    lcd.display();
+    lcd.setCursor(0, 0);
+    lcd.println("                "); //erase caractere in memory
+    lcd.setCursor(0, 0);
+    lcd.println(MessageLCD0);
+    lcd.setCursor(0, 1);
+    lcd.println("                ");
+    lcd.setCursor(0, 1);
+    lcd.println(MessageLCD1);
+  }
+  else if(LastDisplay && !Affichage)
+  {
+    lcd.noDisplay();
+    lcd.noBacklight();
+  }
+  LastDisplay = Affichage;
+  
 }
 
 void writeDataSD(){
@@ -504,7 +656,7 @@ void writeDataSD(){
     dataFile.print("Light;");
     dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getLight());
-    dataFile.print("RedLight;");
+    dataFile.print("LightRed;");
     dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getLightRed());
     dataFile.print("LightGreen;");
@@ -513,6 +665,13 @@ void writeDataSD(){
     dataFile.print("LightBlue;");
     dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getLightBlue());
+    dataFile.print("DewPoint;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(dewPoint(maStationMeteo.getTempDHT(), maStationMeteo.getHumidity()));
+    dataFile.print("HeatIndex;");
+    dataFile.print(getMomentDatalog());
+    dataFile.println(heatIndex(maStationMeteo.getTempDHT(), maStationMeteo.getHumidity()));
+    
     dataFile.close();
   }
   // if the file isn't open, pop up an error:
@@ -567,8 +726,7 @@ void displayData(){
   Serial.println("*************************************************");
   Serial.print("Message radio : ");
   for(int j=0; j < 62; j++){
-    Serial.print(maStationMeteo.radioBuffer[j], HEX);  
+    Serial.print(maStationMeteo._radioBuffer[j], HEX);  
   }
-  Serial.println(maStationMeteo.getRadioBuffer());
   Serial.println("*************************************************");
 }
