@@ -8,6 +8,7 @@
 #include <Adafruit_BMP280.h>
 #include "BH1745NUC.h"
 #include <LiquidCrystal_I2C.h>
+#include "MathHelpers.h" // for scientifique notation
 
 #include <SD.h>
 
@@ -19,6 +20,7 @@ unsigned long UnixTimeLastRadioS;
 int SecondBetweenSend = 1;
 int countdown;
 int i;
+bool setupTime = true;
 
 //Definition des Pins des capteurs
 const byte pinWindSpeed = 3;
@@ -196,7 +198,7 @@ void setup()
     while(1);
   }
   
-  if (rtc.lostPower()) {
+  if (setupTime) {
     Serial.println("RTC lost power, lets set the time!");
     // following line sets the RTC to the date & time this sketch was compiled
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
@@ -452,19 +454,19 @@ void displaySelection(int numero){
       break;
     case 5:
       MessageLCD0 = "Luminosite :";
-      MessageLCD1 = String(maStationMeteo.getLight()) + " Lux";
+      MessageLCD1 = String(sci(maStationMeteo.getLight(), 2)) + " Lux";
       break;
     case 6:
       MessageLCD0 = "Lumiere rouge :";
-      MessageLCD1 = String(maStationMeteo.getLightRed()) + " ?";
+      MessageLCD1 = String(sci(maStationMeteo.getLightRed(), 3)) + " ?";
       break;
     case 7:
       MessageLCD0 = "Lumiere verte :";
-      MessageLCD1 = String(maStationMeteo.getLightGreen()) + " ?";
+      MessageLCD1 = String(sci(maStationMeteo.getLightGreen(), 3)) + " ?";
       break;
     case 8:
       MessageLCD0 = "Lumiere bleue :";
-      MessageLCD1 = String(maStationMeteo.getLightBlue()) + " ?";
+      MessageLCD1 = String(sci(maStationMeteo.getLightBlue(), 3)) + " ?";
       break;
     case 9:
       MessageLCD0 = "Point de Rosee :";
@@ -629,6 +631,8 @@ void writeDataSD(){
 
   if(dataFile){
     // the file is available, we can write on it
+
+    /*
     dataFile.print("Rain;");
     dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getRain());
@@ -638,6 +642,7 @@ void writeDataSD(){
     dataFile.print("Wind Direction;");
     dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getWindDir());
+    */
     dataFile.print("TempDHT22;");
     dataFile.print(getMomentDatalog());
     dataFile.println(maStationMeteo.getTempDHT());
