@@ -11,11 +11,25 @@
 #include "weatherStation.h"
 #include "RTClib.h"
 #include <Wire.h>
+#include "config.h"
+#include <SD.h>
 
 #define CLIENT_ADDRESS 1
 #define SERVER_ADDRESS 2
 
 
+
+// define the feed for the radio
+AdafruitIO_Feed *rainLastSendFeed = io.feed("rain-last-send");
+AdafruitIO_Feed *rain24hFeed = io.feed("rain24h");
+AdafruitIO_Feed *rain7dFeed = io.feed("rain7d");
+AdafruitIO_Feed *windDirFeed = io.feed("wind-dir");
+AdafruitIO_Feed *windSpeedFeed = io.feed("wind-speed");
+AdafruitIO_Feed *temperatureFeed = io.feed("temperature");
+AdafruitIO_Feed *humidityFeed = io.feed("humidity");
+AdafruitIO_Feed *pressureFeed = io.feed("pressure");
+AdafruitIO_Feed *batteryStationFeed = io.feed("battery-station");
+AdafruitIO_Feed *batteryReceiverFeed = io.feed("battery-receiver");
 
 // define the radio parameter
 // Singleton instance of the radio driver
@@ -41,10 +55,19 @@ unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
 int MinuteBetweenSave = 2; // number of minute between two sensor acquisition
 
+// info on the battery
+float batteryReceiverVoltage;
+byte pinBatteryVoltage = A7;
+
+// info for the SD card
+const byte pinCSsd = 4;
+String Filename = "datalog.txt"; 
+
 void setup() {
 
   Serial.begin(115200);
 
+  byte errorSetup = 0; // to stop the setup if something wrong happen
   
   // init the radio
   if (!manager.init())
@@ -57,7 +80,18 @@ void setup() {
   //init the rtc
   if (! rtc.begin()) {
     Serial.println("Couldn't find RTC");
-    while (1);
+    errorSetup = 1;
+  }
+  
+  //init the Sd card on the ethernet shield
+  if (!SD.begin(pinCSsd)) {
+    Serial.println("Card failed, or not present");
+    errorSetup = 1;
+  }
+  Serial.println("SD OK");
+  
+  if(errorSetup){
+    Serial.println("Something wrong happened, please to the setup again"); 
   }
 
   if (! rtc.initialized()) {
@@ -65,7 +99,7 @@ void setup() {
     // following line sets the RTC to the date & time this sketch was compiled
     // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
-  
+
 }
 
 void loop() {
@@ -85,5 +119,140 @@ void loop() {
         Serial.println("sendtoWait failed");
       }
     }
+  }
+
+  // send the data to Adafruit IO
+  sendDataAdafruitIO();
+
+  // save data on the SD card of the datalogger
+  writeDataSD();
+  
+}
+
+void sendDataAdafruitIO(){
+  // send all the data to the adafruit IO feed
+
+  maStationMeteo.calculateIndex();
+  maStationMeteo.windDirAngle2Direction();
+
+  batteryReceiverVoltage = measureBatteryVoltage();
+    
+  rainLastSendFeed->save(maStationMeteo.getRain());
+  rain24hFeed->save(maStationMeteo.getRain24h());
+  rain7dFeed->save(maStationMeteo.getRain7d());
+  windDirFeed->save(maStationMeteo._iconName);
+  windSpeedFeed->save(maStationMeteo.getWindSpeed());
+  temperatureFeed->save(maStationMeteo._avgTemp);
+  humidityFeed->save(maStationMeteo.getHumidity());
+  pressureFeed->save(maStationMeteo.getPressure());
+  batteryStationFeed->save(maStationMeteo.getBatteryVoltage());
+  batteryReceiverFeed->save(batteryReceiverVoltage);
+  
+  
+}
+
+int averageAnalogRead(int pinToRead, byte numberOfReadings){
+  // function return the average value read from an analog input
+  unsigned int runningValue = 0;
+
+  for (int x = 0 ; x < numberOfReadings ; x++){
+    runningValue += analogRead(pinToRead);
+    delay(10); // add a delay of 10ms between two measure
+  }
+  runningValue /= numberOfReadings;
+
+  return (runningValue);
+}
+
+float measureBatteryVoltage(){
+  /*
+   * Return the voltage of the battery
+   */  
+
+  float measuredvbat = averageAnalogRead(pinBatteryVoltage, 64); //read the battery voltage using 64 points of measure
+  measuredvbat *= 2; // we divided by 2, so multiply back
+  measuredvbat *= 3.3; // Multiply by 3.3V, our reference voltage
+  measuredvbat /= 1024; // convert to voltage
+  
+  return(measuredvbat);
+}
+
+void writeDataSD(){
+  
+  File dataFile = SD.open("datalog.txt", FILE_WRITE);
+  String dateSave = getMomentDatalog();
+
+  if(dataFile){
+    // the file is available, we can write on it
+
+    dataFile.print("Rain;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getRain());
+    
+    dataFile.print("Wind Speed;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getWindSpeed());
+    
+    dataFile.print("Wind Direction;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getWindDir());
+    
+    dataFile.print("TempDHT22;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getTempDHT());
+    
+    dataFile.print("Humidity;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getHumidity());
+    
+    dataFile.print("Pressure;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getPressure());
+    
+    dataFile.print("TempBMP;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getTempBMP());
+    
+    dataFile.print("TempRTC;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getTempRTC());
+    
+    dataFile.print("Light;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getLight());
+    
+    dataFile.print("LightRed;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getLightRed());
+    
+    dataFile.print("LightGreen;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getLightGreen());
+    
+    dataFile.print("LightBlue;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo.getLightBlue());
+    
+    dataFile.print("DewPoint;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo._dewPoint);
+    
+    dataFile.print("HeatIndex;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo._heatIndex);
+    
+    dataFile.print("Icing Point;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo._icingPoint);
+
+    dataFile.print("Wind Chill;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo._windChill);
+    
+    dataFile.close();
+  }
+  // if the file isn't open, pop up an error:
+  else {
+    Serial.println("error opening datalog.txt");
   }
 }

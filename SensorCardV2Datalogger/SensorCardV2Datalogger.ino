@@ -627,7 +627,7 @@ void loop(){
 }
 
 void writeDataSD(){
-  File dataFile = SD.open("datalog.txt", FILE_WRITE);
+  File dataFile = SD.open(Filename, FILE_WRITE);
 
   if(dataFile){
     // the file is available, we can write on it
