@@ -11,7 +11,7 @@
 #include "weatherStation.h"
 #include "RTClib.h"
 #include <Wire.h>
-#include "config.h"
+#include "D:\service cloud\OneDrive\Documents\5.Bricolage\5.StationMeteo\config.h"
 #include <SD.h>
 
 #define CLIENT_ADDRESS 1
@@ -53,7 +53,8 @@ unsigned long UnixTime;
 unsigned long UnixTimeLastRadio;
 unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
-int MinuteBetweenSave = 2; // number of minute between two sensor acquisition
+int MinuteBetweenSend = 10; // number of minute between two sensor acquisition
+bool waitMessage = false;
 
 // info on the battery
 float batteryReceiverVoltage;
@@ -104,28 +105,44 @@ void setup() {
 
 void loop() {
 
-  if (manager.available()){
-    // Wait for a message addressed to us from the client
-    uint8_t len = sizeof(buf);
-    uint8_t from;
-    if (manager.recvfromAck(buf, &len, &from)){
-      Serial.print("got request from : 0x");
-      Serial.print(from, HEX);
-      Serial.print(": ");
-      Serial.println((char*)buf);
+  // check for time
+  instant = rtc.now();
+  if(((getUnixTimeM(instant) % MinuteBetweenSend) == MinuteBetweenSend -1)  || (waitMessage)){
+    // the radio is waiting for a message 1 min before it will be send
+    waitMessage = true;
+    
+    // check for radio message
+    //the first call will wake up the radio module
+    if (manager.available()){
+      // Wait for a message addressed to us from the client
+      uint8_t len = sizeof(buf);
+      uint8_t from;
+      if (manager.recvfromAck(buf, &len, &from)){
+        //a message is received
+        Serial.print("got request from : 0x");
+        Serial.print(from, HEX);
+        Serial.print(": ");
+        Serial.println((char*)buf);
 
-      // Send a reply back to the originator client
-      if (!manager.sendtoWait(data, sizeof(data), from)){
-        Serial.println("sendtoWait failed");
+        // decryption of the message
+        maStationMeteo.setRadioBufferReceive(buf);
+        maStationMeteo.decodingMessage();
+        // send the data to Adafruit IO
+        sendDataAdafruitIO();
+        // save data on the SD card of the datalogger
+        writeDataSD();
+  
+        // Send a reply back to the originator client
+        if (!manager.sendtoWait(data, sizeof(data), from)){
+          Serial.println("sendtoWait failed");
+        }
+
+        waitMessage = false;
+        // a message was received, it's time to put the radio module in sleep mode
+        driver.sleep();
       }
     }
   }
-
-  // send the data to Adafruit IO
-  sendDataAdafruitIO();
-
-  // save data on the SD card of the datalogger
-  writeDataSD();
   
 }
 
@@ -147,8 +164,6 @@ void sendDataAdafruitIO(){
   pressureFeed->save(maStationMeteo.getPressure());
   batteryStationFeed->save(maStationMeteo.getBatteryVoltage());
   batteryReceiverFeed->save(batteryReceiverVoltage);
-  
-  
 }
 
 int averageAnalogRead(int pinToRead, byte numberOfReadings){
@@ -248,6 +263,10 @@ void writeDataSD(){
     dataFile.print("Wind Chill;");
     dataFile.print(dateSave);
     dataFile.println(maStationMeteo._windChill);
+
+    dataFile.print("RSSI;");
+    dataFile.print(dateSave);
+    dataFile.println(maStationMeteo._RSSI);
     
     dataFile.close();
   }
@@ -255,4 +274,27 @@ void writeDataSD(){
   else {
     Serial.println("error opening datalog.txt");
   }
+}
+
+String getDate() {
+  int Year = instant.year();
+  int Month = instant.month();
+  int Day = instant.day();
+  String Date = String(Day) + '/' + String(Month) + '/' + String(Year);
+  return(Date);
+}
+String getHoraireHM(){
+  int Hour = instant.hour();
+  int Minute = instant.minute();
+  String Horaire = String(Hour) + ":" + String(Minute);
+  return(Horaire);
+}
+String getMomentDatalog(){
+  String moment = getDate() + " " + getHoraireHM() + ";";
+  return(moment);
+}
+unsigned long getUnixTimeM(DateTime instant){
+  unsigned long minutes;
+  minutes = (unsigned long) (instant.unixtime()/60);
+  return(minutes);
 }

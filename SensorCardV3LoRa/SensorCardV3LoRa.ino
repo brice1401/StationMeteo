@@ -44,7 +44,7 @@ unsigned long UnixTime;
 unsigned long UnixTimeLastRadio;
 unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
-int MinuteBetweenSave = 2; // number of minute between two sensor acquisition
+int MinuteBetweenSend = 2; // number of minute between two sensor acquisition
 
 
 // def of variable for code of sensor functions
@@ -405,7 +405,7 @@ void loop(){
   //look at the time :
   instant = rtc.now();
   
-  if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSave){ //pour mesures toutes les minutes
+  if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSend){ //pour mesures toutes les minutes
   
   //if(DurationLastSendS(UnixTimeLastRadioS, instant) >= 15){ 
     //pour mesure toutes les 10s
