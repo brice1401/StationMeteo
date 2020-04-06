@@ -105,7 +105,7 @@ void setup()
   digitalWrite(LED_BUILTIN, HIGH);
 
   //definition of pin
-  //pinMode(pinRain, INPUT);
+  pinMode(pinRain, INPUT);
   pinMode(pinWindDir, INPUT);
   pinMode(pinWindSpeed, INPUT);
   pinMode(pinBatteryVoltage, INPUT);
@@ -269,6 +269,10 @@ float measureWindSpeed(){
   int durationReading = 10 * 1000; //mesure sur 10s
   unsigned long startReading = millis();
 
+  detachInterrupt(pinRain);
+  attachInterrupt(pinWindSpeed, interruptWindSpeed, FALLING);
+  interrupts();
+  
   WindSpeedClick = 0; //init the counter before counting
   while (millis() - startReading < durationReading) {} //counting during the defined duration
   endReading = millis();
@@ -276,6 +280,10 @@ float measureWindSpeed(){
   float WindSpeed = float(WindSpeedClick) / float((endReading - startReading) / 1000); //frequency of click
   WindSpeedClick = 0; //init the counter after counting
   WindSpeed *= 2.4;
+
+  detachInterrupt(pinWindSpeed);
+  attachInterrupt(pinRain, interruptRainGauge, FALLING);
+  interrupts();
 
   // change the attribut of the classe
   return(WindSpeed);
@@ -413,15 +421,7 @@ void loop(){
     //it's time to measure and to send a new message
 
     // check the wind speed
-    /*
-    detachInterrupt(pinRain);
-    attachInterrupt(pinWindSpeed, interruptWindSpeed, FALLING);
-    interrupts();
     maStationMeteo.setWindSpeed(measureWindSpeed());
-    detachInterrupt(pinWindSpeed);
-    attachInterrupt(pinRain, interruptRainGauge, FALLING);
-    interrupts();
-    */
     
     // measure the direction of the wind
     maStationMeteo.setWindDir(measureWindDir(100)); //measure direction of wind using 127 point of measure

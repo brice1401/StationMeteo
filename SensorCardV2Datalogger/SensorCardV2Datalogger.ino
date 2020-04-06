@@ -8,9 +8,13 @@
 #include <Adafruit_BMP280.h>
 #include "BH1745NUC.h"
 #include <LiquidCrystal_I2C.h>
-#include "MathHelpers.h" // for scientifique notation
+#include "displaySaveData.h"
 
+#ifndef _SD_H_
+#define _SD_H_
 #include <SD.h>
+#endif
+
 
 
 // pour le debuggage
@@ -60,8 +64,8 @@ long LastWindCheck;
 const byte PinChangeEcran = A3;
 bool Affichage;
 bool LastDisplay; //to avoid blinking
-String MessageLCD0; //message on upper line
-String MessageLCD1; //message on lower line
+extern String MessageLCD0; //message on upper line
+extern String MessageLCD1; //message on lower line
 int NumEcran;
 int PositionChange;
 int LastPositionChange;
@@ -72,7 +76,7 @@ const int TimeAffichageMax = 5; //time to display data (s)
 unsigned long TimeAffichageCourant = 0;
 unsigned long debutAffichage = 0;
 unsigned long LastdebounceTime = 0;  // the last time the output pin was toggled
-unsigned int debounceDelay = 500;    // the debounce time; increase if the output flickers
+unsigned int debounceDelay = 200;    // the debounce time; increase if the output flickers
 
 
 // init libraries of sensor
@@ -182,12 +186,6 @@ void setup()
   }
   Serial.println("SD OK");
   
-  File dataFile = SD.open(Filename);
-  /*
-  if(dataFile){
-    SD.remove(Filename);
-    Serial.println("Le fichier existe déjà, il a été supprimé");
-  }*/
 
   // init the LCD
   lcd.begin();
@@ -237,57 +235,10 @@ void setup()
 }
 
 
-/*******************************************************************************************************/
-/*
-   Function for time management
-*/
-/*******************************************************************************************************/
 
-unsigned long getUnixTimeM(DateTime instant){
-  unsigned long minutes;
-  minutes = (unsigned long) (instant.unixtime()/60);
-  return(minutes);
-}
 
-int DurationLastSend(unsigned long start, DateTime instant){
-  int duration;
-  duration = int ((unsigned long) (instant.unixtime()/60) - start);
-  return(duration);
-}
-unsigned long getUnixTimeS(DateTime instant){
-  unsigned long minutes;
-  minutes = (unsigned long) (instant.unixtime());
-  return(minutes);
-}
-
-int DurationLastSendS(unsigned long start, DateTime instant){
-  int duration;
-  duration = int ((unsigned long) (instant.unixtime()) - start);
-  return(duration);
-}
-
-String getDate() {
-  int Year = instant.year();
-  int Month = instant.month();
-  int Day = instant.day();
-  String Date = String(Day) + '/' + String(Month) + '/' + String(Year);
-  return(Date);
-}
-String getHoraireHM(){
-  int Hour = instant.hour();
-  int Minute = instant.minute();
-  String Horaire = String(Hour) + ":" + String(Minute);
-  return(Horaire);
-}
-String getMomentDatalog(){
-  String moment = getDate() + " " + getHoraireHM() + ";";
-  return(moment);
-}
-
-/*******************************************************************************************************/
-/*
+/*******************************************************************************************************
    Function for sensor reading
-*/
 /*******************************************************************************************************/
 
 float measureRainGauge(){
@@ -420,70 +371,11 @@ float measureBatteryTemp(){
   return (tempBattery);
 }
 
-/*******************************************************************************************************/
-/*
-   Function for LCD Display
-*/
-/*******************************************************************************************************/
-
-void displaySelection(int numero){
-
-  switch(numero){
-    case 0:
-      MessageLCD0 = "Temperature DHT:";
-      MessageLCD1 = String(maStationMeteo.getTempDHT()) + " °C";
-      break;
-
-    case 1:
-      MessageLCD0 = "Humidite :";
-      MessageLCD1 = String(maStationMeteo.getHumidity()) + " %";
-      break;
-
-    case 2:
-      MessageLCD0 = "Temp BMP :";
-      MessageLCD1 = String(maStationMeteo.getTempBMP()) + " °C";
-      break;
-      
-    case 3:
-      MessageLCD0 = "Pression :";
-      MessageLCD1 = String(maStationMeteo.getPressure()) + " hPa";
-      break; 
-    case 4:
-      MessageLCD0 = "Temperature RTC:";
-      MessageLCD1 = String(maStationMeteo.getTempRTC()) + " °C";
-      break;
-    case 5:
-      MessageLCD0 = "Luminosite :";
-      MessageLCD1 = String(sci(maStationMeteo.getLight(), 2)) + " Lux";
-      break;
-    case 6:
-      MessageLCD0 = "Lumiere rouge :";
-      MessageLCD1 = String(sci(maStationMeteo.getLightRed(), 3)) + " ?";
-      break;
-    case 7:
-      MessageLCD0 = "Lumiere verte :";
-      MessageLCD1 = String(sci(maStationMeteo.getLightGreen(), 3)) + " ?";
-      break;
-    case 8:
-      MessageLCD0 = "Lumiere bleue :";
-      MessageLCD1 = String(sci(maStationMeteo.getLightBlue(), 3)) + " ?";
-      break;
-    case 9:
-      MessageLCD0 = "Point de Rosee :";
-      MessageLCD1 = String(dewPoint(maStationMeteo.getTempDHT(), maStationMeteo.getHumidity())) + " °C";
-      break;
-    case 10:
-      MessageLCD0 = "Heat index :";
-      MessageLCD1 = String(heatIndex(maStationMeteo.getTempDHT(), maStationMeteo.getHumidity())) + " °C";
-      break;   
-  }
-}
 
 
-/*******************************************************************************************************/
-/*
+
+/*******************************************************************************************************
    Function loop
-*/
 /*******************************************************************************************************/
 
 void loop(){
@@ -555,23 +447,24 @@ void loop(){
       maStationMeteo.setRain7d(0, instant.dayOfTheWeek());
       lastDay = instant.dayOfTheWeek();
     }
-    
+
+    // measure rain
     maStationMeteo.setRain(rainMM);
     maStationMeteo.addRain24h(rainMM, instant.hour());
     maStationMeteo.addRain7d(rainMM, instant.dayOfTheWeek());
     
 
-    //element for the radio
+    //element for the radio, create the message
     maStationMeteo.codingMessage();
     
     if(affiche){ // display the value of the sensor in the class
-      displayData();
+      displayDataSerial(maStationMeteo, instant);
     }
 
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
     UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message
 
-    writeDataSD();
+    writeDataSD(Filename, maStationMeteo, instant);
   }
 
   /*
@@ -592,7 +485,7 @@ void loop(){
   
   
       //Init the line to display
-      displaySelection(NumEcran); 
+      displaySelection(NumEcran, maStationMeteo); 
     }
   }
   LastPositionChange = PositionChange;
@@ -606,83 +499,14 @@ void loop(){
 
   if(Affichage && !LastDisplay)
   { //management of the display
-    lcd.backlight();
-    lcd.display();
-    lcd.setCursor(0, 0);
-    lcd.println("                "); //erase caractere in memory
-    lcd.setCursor(0, 0);
-    lcd.println(MessageLCD0);
-    lcd.setCursor(0, 1);
-    lcd.println("                ");
-    lcd.setCursor(0, 1);
-    lcd.println(MessageLCD1);
+    lcdDisplay(lcd);
   }
   else if(LastDisplay && !Affichage)
   {
-    lcd.noDisplay();
-    lcd.noBacklight();
+    lcdNoDisplay(lcd);
   }
   LastDisplay = Affichage;
   
-}
-
-void writeDataSD(){
-  File dataFile = SD.open(Filename, FILE_WRITE);
-
-  if(dataFile){
-    // the file is available, we can write on it
-
-    /*
-    dataFile.print("Rain;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getRain());
-    dataFile.print("Wind Speed;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getWindSpeed());
-    dataFile.print("Wind Direction;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getWindDir());
-    */
-    dataFile.print("TempDHT22;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getTempDHT());
-    dataFile.print("Humidity;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getHumidity());
-    dataFile.print("Pressure;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getPressure());
-    dataFile.print("TempBMP;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getTempBMP());
-    dataFile.print("TempRTC;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getTempRTC());
-    dataFile.print("Light;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getLight());
-    dataFile.print("LightRed;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getLightRed());
-    dataFile.print("LightGreen;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getLightGreen());
-    dataFile.print("LightBlue;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(maStationMeteo.getLightBlue());
-    dataFile.print("DewPoint;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(dewPoint(maStationMeteo.getTempDHT(), maStationMeteo.getHumidity()));
-    dataFile.print("HeatIndex;");
-    dataFile.print(getMomentDatalog());
-    dataFile.println(heatIndex(maStationMeteo.getTempDHT(), maStationMeteo.getHumidity()));
-    
-    dataFile.close();
-  }
-  // if the file isn't open, pop up an error:
-  else {
-    Serial.println("error opening datalog.txt");
-  }
 }
 
 void blinkLed13(){
@@ -693,45 +517,6 @@ void blinkLed13(){
     digitalWrite(LED_BUILTIN, HIGH); //switch on the led
     delay(100);
     digitalWrite(LED_BUILTIN, LOW);//switch of the led
+    delay(100);
   }
-}
-
-void displayData(){
-  // display the data on the serial
-
-  Serial.println("*************************************************");
-  Serial.print("Mesure à ");
-  Serial.println(getMomentDatalog());
-  Serial.println("*************************************************");
-  Serial.print("Pluie : ");
-  Serial.println(maStationMeteo.getRain());
-  Serial.print("Vitesse vent : ");
-  Serial.println(maStationMeteo.getWindSpeed());
-  Serial.print("Direction du vent : ");
-  Serial.println(maStationMeteo.getWindDir());
-  Serial.print("Température DHT22 : ");
-  Serial.println(maStationMeteo.getTempDHT());
-  Serial.print("Humidité : ");
-  Serial.println(maStationMeteo.getHumidity());
-  Serial.print("Pression : ");
-  Serial.println(maStationMeteo.getPressure());
-  Serial.print("Température BMP : ");
-  Serial.println(maStationMeteo.getTempBMP());
-  Serial.print("Température RTC : ");
-  Serial.println(maStationMeteo.getTempRTC());
-  Serial.print("Lumière claire : ");
-  Serial.println(maStationMeteo.getLight());
-  Serial.print("Lumière rouge : ");
-  Serial.println(maStationMeteo.getLightRed());
-  Serial.print("Lumière verte : ");
-  Serial.println(maStationMeteo.getLightGreen());
-  Serial.print("Lumière bleue : ");
-  Serial.println(maStationMeteo.getLightBlue());
-
-  Serial.println("*************************************************");
-  Serial.print("Message radio : ");
-  for(int j=0; j < 62; j++){
-    Serial.print(maStationMeteo._radioBuffer[j], HEX);  
-  }
-  Serial.println("*************************************************");
 }

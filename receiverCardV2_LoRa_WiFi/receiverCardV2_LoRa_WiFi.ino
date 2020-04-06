@@ -9,6 +9,7 @@
 #include <RH_RF95.h>
 #include <SPI.h>
 #include "weatherStation.h"
+#include "displaySaveData.h"
 #include "RTClib.h"
 #include <Wire.h>
 #include "D:\service cloud\OneDrive\Documents\5.Bricolage\5.StationMeteo\config.h"
@@ -190,111 +191,4 @@ float measureBatteryVoltage(){
   measuredvbat /= 1024; // convert to voltage
   
   return(measuredvbat);
-}
-
-void writeDataSD(){
-  
-  File dataFile = SD.open("datalog.txt", FILE_WRITE);
-  String dateSave = getMomentDatalog();
-
-  if(dataFile){
-    // the file is available, we can write on it
-
-    dataFile.print("Rain;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getRain());
-    
-    dataFile.print("Wind Speed;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getWindSpeed());
-    
-    dataFile.print("Wind Direction;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getWindDir());
-    
-    dataFile.print("TempDHT22;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getTempDHT());
-    
-    dataFile.print("Humidity;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getHumidity());
-    
-    dataFile.print("Pressure;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getPressure());
-    
-    dataFile.print("TempBMP;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getTempBMP());
-    
-    dataFile.print("TempRTC;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getTempRTC());
-    
-    dataFile.print("Light;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getLight());
-    
-    dataFile.print("LightRed;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getLightRed());
-    
-    dataFile.print("LightGreen;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getLightGreen());
-    
-    dataFile.print("LightBlue;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo.getLightBlue());
-    
-    dataFile.print("DewPoint;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo._dewPoint);
-    
-    dataFile.print("HeatIndex;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo._heatIndex);
-    
-    dataFile.print("Icing Point;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo._icingPoint);
-
-    dataFile.print("Wind Chill;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo._windChill);
-
-    dataFile.print("RSSI;");
-    dataFile.print(dateSave);
-    dataFile.println(maStationMeteo._RSSI);
-    
-    dataFile.close();
-  }
-  // if the file isn't open, pop up an error:
-  else {
-    Serial.println("error opening datalog.txt");
-  }
-}
-
-String getDate() {
-  int Year = instant.year();
-  int Month = instant.month();
-  int Day = instant.day();
-  String Date = String(Day) + '/' + String(Month) + '/' + String(Year);
-  return(Date);
-}
-String getHoraireHM(){
-  int Hour = instant.hour();
-  int Minute = instant.minute();
-  String Horaire = String(Hour) + ":" + String(Minute);
-  return(Horaire);
-}
-String getMomentDatalog(){
-  String moment = getDate() + " " + getHoraireHM() + ";";
-  return(moment);
-}
-unsigned long getUnixTimeM(DateTime instant){
-  unsigned long minutes;
-  minutes = (unsigned long) (instant.unixtime()/60);
-  return(minutes);
 }
