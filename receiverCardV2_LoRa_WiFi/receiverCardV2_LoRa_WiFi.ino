@@ -12,7 +12,7 @@
 #include "displaySaveData.h"
 #include "RTClib.h"
 #include <Wire.h>
-#include "D:\service cloud\OneDrive\Documents\5.Bricolage\5.StationMeteo\config.h"
+#include <config.h>
 #include <SD.h>
 
 #define CLIENT_ADDRESS 1
@@ -108,6 +108,7 @@ void loop() {
 
   // check for time
   instant = rtc.now();
+  
   if(((getUnixTimeM(instant) % MinuteBetweenSend) == MinuteBetweenSend -1)  || (waitMessage)){
     // the radio is waiting for a message 1 min before it will be send
     waitMessage = true;
@@ -131,7 +132,7 @@ void loop() {
         // send the data to Adafruit IO
         sendDataAdafruitIO();
         // save data on the SD card of the datalogger
-        writeDataSD();
+        writeDataSD(Filename, maStationMeteo, instant);
   
         // Send a reply back to the originator client
         if (!manager.sendtoWait(data, sizeof(data), from)){
