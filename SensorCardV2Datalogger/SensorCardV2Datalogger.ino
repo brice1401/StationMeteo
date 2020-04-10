@@ -16,7 +16,6 @@
 #endif
 
 
-
 // pour le debuggage
 byte affiche = 1;
 byte loopLaunch = 1;
@@ -92,8 +91,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Interrrupt
 void interruptRainGauge(){
-  if ((millis() - LastRain) > 20)
-  {
+  if ((millis() - LastRain) > 20){
     Serial.println("mm de mesuré");
     RainClick++;
     LastRain = millis();
@@ -101,8 +99,7 @@ void interruptRainGauge(){
 }
 
 void interruptWindSpeed(){
-  if ((millis() - LastWindSpeed) > 10)
-  {
+  if ((millis() - LastWindSpeed) > 10){
     WindSpeedClick++;
     LastWindSpeed = millis();
   }

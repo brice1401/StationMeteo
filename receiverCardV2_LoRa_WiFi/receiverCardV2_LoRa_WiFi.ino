@@ -19,7 +19,6 @@
 #define SERVER_ADDRESS 2
 
 
-
 // define the feed for the radio
 AdafruitIO_Feed *rainLastSendFeed = io.feed("rain-last-send");
 AdafruitIO_Feed *rain24hFeed = io.feed("rain24h");
@@ -41,6 +40,7 @@ RHReliableDatagram manager(driver, SERVER_ADDRESS);
 uint8_t data[] = "And hello back to you";
 // Dont put this on the stack:
 uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+float lastRSSI;
 
 //define the weatherStationObect
 WeatherStation maStationMeteo;
@@ -63,7 +63,10 @@ byte pinBatteryVoltage = A7;
 
 // info for the SD card
 const byte pinCSsd = 4;
-String Filename = "datalog.txt"; 
+String Filename = "datalog.txt";
+
+// define the lcd screen
+Adafruit_LiquidCrystal lcd(0); // #0 (A0-A2 not jumpered)
 
 void setup() {
 
@@ -102,6 +105,10 @@ void setup() {
     // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
 
+
+  // init the lcd screen
+  lcd.begin(16, 2);
+  
 }
 
 void loop() {
@@ -145,16 +152,17 @@ void loop() {
       }
     }
   }
-  
 }
 
 void sendDataAdafruitIO(){
-  // send all the data to the adafruit IO feed
-
+  
+  // calculate the index, the direction of wind and the battery voltage
   maStationMeteo.calculateIndex();
   maStationMeteo.windDirAngle2Direction();
-
   batteryReceiverVoltage = measureBatteryVoltage();
+  maStationMeteo._batteryReceiverVoltage = batteryReceiverVoltage; // out it inside the object to save it
+
+  // send all the data to the adafruit IO feed
     
   rainLastSendFeed->save(maStationMeteo.getRain());
   rain24hFeed->save(maStationMeteo.getRain24h());
@@ -174,7 +182,7 @@ int averageAnalogRead(int pinToRead, byte numberOfReadings){
 
   for (int x = 0 ; x < numberOfReadings ; x++){
     runningValue += analogRead(pinToRead);
-    delay(10); // add a delay of 10ms between two measure
+    delay(100); // add a delay of 100ms between two measure
   }
   runningValue /= numberOfReadings;
 

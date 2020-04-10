@@ -345,7 +345,7 @@ int averageAnalogRead(int pinToRead, byte numberOfReadings){
 
   for (int x = 0 ; x < numberOfReadings ; x++){
     runningValue += analogRead(pinToRead);
-    delay(10); // add a delay of 10ms between two measure
+    delay(100); // add a delay of 10ms between two measure
   }
   runningValue /= numberOfReadings;
 
@@ -358,7 +358,7 @@ float measureBatteryVoltage(){
    * 
    */  
 
-  float measuredvbat = averageAnalogRead(pinBatteryVoltage, 64); //read the battery voltage using 64 points of measure
+  float measuredvbat = averageAnalogRead(pinBatteryVoltage, 20); //read the battery voltage using 64 points of measure
   measuredvbat *= 2; // we divided by 2, so multiply back
   measuredvbat *= 3.3; // Multiply by 3.3V, our reference voltage
   measuredvbat /= 1024; // convert to voltage
@@ -376,7 +376,7 @@ float measureBatteryTemp(){
   // Be carefull of the value of Vin (voltage of the input source)
   // and the resistance value are in kohm
 
-  int readingThermistor = averageAnalogRead(pinBatteryTemp, 16); // get the value of the pin
+  int readingThermistor = averageAnalogRead(pinBatteryTemp, 20); // get the value of the pin
   float R1 = 9.93; // serie resistor in kohm
   float Vin = 4.827;
   float Rt; // value of reisitivity of the thermistor
