@@ -5,7 +5,6 @@
  *  send the data to Adafruit IO by wifi 
  */
 
-#include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #include <SPI.h>
 #include "weatherStation.h"
@@ -14,9 +13,6 @@
 #include <Wire.h>
 #include <config.h>
 #include <SD.h>
-
-#define CLIENT_ADDRESS 1
-#define SERVER_ADDRESS 2
 
 
 // define the feed for the radio
@@ -37,10 +33,11 @@ AdafruitIO_Feed *batteryReceiverFeed = io.feed("battery-receiver");
 #define RFM95_RST 4
 #define RFM95_INT 3
 
+// Change to 434.0 or other frequency, must match RX's freq!
+#define RF95_FREQ 434.0
+
 // Singleton instance of the radio driver
-RH_RF95 driver;
-// Class to manage message delivery and receipt, using the driver declared above
-RHReliableDatagram manager(driver, SERVER_ADDRESS);
+RH_RF95 rf95;
 
 uint8_t data[] = "And hello back to you";
 // Dont put this on the stack:
@@ -67,7 +64,7 @@ float batteryReceiverVoltage;
 #define pinBatteryVoltage A7
 
 // info for the SD card
-#define pinCSsd 4
+#define pinCSsd 10
 String Filename = "datalog.txt";
 
 // define the lcd screen
@@ -78,42 +75,74 @@ void setup() {
   Serial.begin(115200);
 
   byte errorSetup = 0; // to stop the setup if something wrong happen
-  
-  // init the radio
-  if (!manager.init())
-    Serial.println("init failed");
-  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
-
-  // you can set transmitter powers from 5 to 23 dBm:
-  //driver.setTxPower(23, false);
 
   //init the rtc
   if (! rtc.begin()) {
-    Serial.println("Couldn't find RTC");
+    Serial.println(F("Couldn't find RTC"));
     errorSetup = 1;
   }
+  if (!rtc.initialized()) {
+    Serial.println("RTC is NOT running!");
+    // following line sets the RTC to the date & time this sketch was compiled
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+  Serial.println(F("RTC ready"));
+  delay(200);
   
   //init the Sd card on the ethernet shield
   if (!SD.begin(pinCSsd)) {
-    Serial.println("Card failed, or not present");
+    Serial.println(F("Card failed, or not present"));
     errorSetup = 1;
   }
-  Serial.println("SD OK");
+  Serial.println(F("SD ready"));
+  delay(200);
   
   if(errorSetup){
-    Serial.println("Something wrong happened, please to the setup again"); 
-  }
-
-  if (! rtc.initialized()) {
-    Serial.println("RTC is NOT running!");
-    // following line sets the RTC to the date & time this sketch was compiled
-    // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    Serial.println(F("Something wrong happened, please to the setup again")); 
+    while(1){}
   }
 
 
   // init the lcd screen
   lcd.begin(16, 2);
-  
+
+  //init the radio
+  pinMode(RFM95_RST, OUTPUT);
+  digitalWrite(RFM95_RST, HIGH);
+
+  while (!Serial) {
+    //wait for serial comunication to be ready
+    delay(1);
+  }
+  delay(100);
+
+  Serial.println("Feather LoRa RX Test!");
+  // manual reset
+  digitalWrite(RFM95_RST, LOW);
+  delay(10);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(10);
+
+  while (!rf95.init()) {
+    Serial.println("LoRa radio init failed");
+    Serial.println("Uncomment '#define SERIAL_DEBUG' in RH_RF95.cpp for detailed debug info");
+    while (1);
+  }
+  Serial.println("LoRa radio init OK!");
+
+  // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
+  if (!rf95.setFrequency(RF95_FREQ)) {
+    Serial.println("setFrequency failed");
+    while (1);
+  }
+  Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
+
+  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+
+  // The default transmitter power is 13dBm, using PA_BOOST.
+  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
+  // you can set transmitter powers from 5 to 23 dBm:
+  rf95.setTxPower(23, false);
 }
 
 void loop() {
@@ -127,33 +156,37 @@ void loop() {
     
     // check for radio message
     //the first call will wake up the radio module
-    if (manager.available()){
+    if (rf95.available()){
       // Wait for a message addressed to us from the client
       uint8_t len = sizeof(buf);
       uint8_t from;
-      if (manager.recvfromAck(buf, &len, &from)){
+      if (rf95.recv(buf, &len)){
         //a message is received
-        Serial.print("got request from : 0x");
-        Serial.print(from, HEX);
-        Serial.print(": ");
+        RH_RF95::printBuffer("Received: ", buf, len);
+        Serial.print("Got: ");
         Serial.println((char*)buf);
+        Serial.print("RSSI: ");
+        Serial.println(rf95.lastRssi(), DEC);
 
         // decryption of the message
         maStationMeteo.setRadioBufferReceive(buf);
         maStationMeteo.decodingMessage();
+        // add the rssi to the data
+        maStationMeteo._RSSI = rf95.lastRssi();
         // send the data to Adafruit IO
         sendDataAdafruitIO();
         // save data on the SD card of the datalogger
         writeDataSD(Filename, maStationMeteo, instant);
   
         // Send a reply back to the originator client
-        if (!manager.sendtoWait(data, sizeof(data), from)){
-          Serial.println("sendtoWait failed");
-        }
+        uint8_t response[] = "Thanks for the data";
+        rf95.send(response, sizeof(data));
+        rf95.waitPacketSent();
+        Serial.println("Sent a reply");
 
         waitMessage = false;
         // a message was received, it's time to put the radio module in sleep mode
-        driver.sleep();
+        rf95.sleep();
       }
     }
   }

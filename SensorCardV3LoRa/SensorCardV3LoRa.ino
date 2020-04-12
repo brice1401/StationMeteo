@@ -12,8 +12,8 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
 #include "BH1745NUC.h"
-#include <RHReliableDatagram.h>
 #include <RH_RF95.h>
+#include "displaySaveData.h"
 
 
 // pour le debuggage
@@ -59,22 +59,16 @@ Adafruit_BMP280 bmp;
 DHT dht(pinDHT22, DHT22);
 BH1745NUC bh;
 
-// init the parameter for the radio
-#define CLIENT_ADDRESS 1
-#define SERVER_ADDRESS 2
-
+// parameters for the radio
 // parameter for feather m0 RFM9x
 #define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 3
 
-#define RF95_FREQ 915.0
+#define RF95_FREQ 434.0
 
 // Singleton instance of the radio driver
-RH_RF95 driver(RFM95_CS, RFM95_INT);
-
-// Class to manage message delivery and receipt, using the driver declared above
-RHReliableDatagram manager(driver, CLIENT_ADDRESS);
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 // Dont put this on the stack:
 uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
@@ -101,6 +95,11 @@ void interruptWindSpeed(){
 void setup()
 {
   Serial.begin(115200);
+  while (!Serial) {
+    // wait for serial bus to be active (M0)
+    delay(1);
+  }
+  
   LastDisplay = millis();
   i = 1;
   
@@ -114,7 +113,6 @@ void setup()
   pinMode(pinWindDir, INPUT);
   pinMode(pinWindSpeed, INPUT);
   pinMode(pinBatteryVoltage, INPUT);
-  pinMode(pinBatteryTemp, INPUT);
 
   //init of variable for the code
   LastWindSpeed = 0;
@@ -125,18 +123,16 @@ void setup()
   
   //Interrupt for wind speed
   attachInterrupt(digitalPinToInterrupt(pinRain), interruptRainGauge, FALLING);
-  attachInterrupt(digitalPinToInterrupt(pinWindSpeed), interruptWindSpeed, FALLING);
   interrupts(); //turn on the interrrupt for rain
 
-  /*
-   * Init the sensor and I2C devices
-   */
+  // Init the sensor and I2C devices
 
   byte errorSensor = 0;
   
   //init DHT
   dht.begin();
   Serial.println("DHT OK");
+  delay(200);
 
   //init the BMP
   if (!bmp.begin()) {
@@ -144,7 +140,16 @@ void setup()
     errorSensor = 1;
   }
   Serial.println("BMP OK");
+  delay(200);
 
+  /* Default settings from datasheet for BMP280 */
+  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
+                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+                  
+  
   //Init the BH1745 (light sensor)
   bh.Initialize();
   if(!bh.begin()){
@@ -152,6 +157,7 @@ void setup()
     errorSensor = 1;
   }
   Serial.println("BH1745 OK");
+  delay(200);
 
   // init the RTC
   // use to init the RTC module
@@ -162,13 +168,6 @@ void setup()
   }
   Serial.println("RTC OK");
 
-  
-  if(errorSensor == 1){
-    // Stop the programme
-    Serial.println("There is (at least) one error, so the program has to stop");
-    while(1);
-  }
-  
   if (rtc.lostPower()) {
     Serial.println("RTC lost power, lets set the time!");
     // following line sets the RTC to the date & time this sketch was compiled
@@ -178,87 +177,59 @@ void setup()
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
   }
 
+  
+  if(errorSensor == 1){
+    // Stop the programme
+    Serial.println("There is (at least) one error, so the program has to stop");
+    while(1);
+  }
+  
+  // init the radio
+  pinMode(RFM95_RST, OUTPUT);
+  digitalWrite(RFM95_RST, HIGH);
+
+  Serial.println("Feather LoRa TX Test!");
+
+  // manual reset
+  digitalWrite(RFM95_RST, LOW);
+  delay(10);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(10);
+
+  while (!rf95.init()) {
+    Serial.println("LoRa radio init failed");
+    Serial.println("Uncomment '#define SERIAL_DEBUG' in RH_RF95.cpp for detailed debug info");
+    while (1);
+  }
+  Serial.println("LoRa radio init OK!");
+
+  // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
+  if (!rf95.setFrequency(RF95_FREQ)) {
+    Serial.println("setFrequency failed");
+    while (1);
+  }
+  Serial.print("Set Freq to : "); 
+  Serial.println(RF95_FREQ);
+  
+  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+  // The default transmitter power is 13dBm, using PA_BOOST.
+  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then 
+  // you can set transmitter powers from 5 to 23 dBm:
+  rf95.setTxPower(23, false);
+
+
   // init of temp variable
   instant = rtc.now();
   UnixTimeLastRadio = getUnixTimeM(instant);
   UnixTimeLastRadioS = getUnixTimeS(instant);
 
-  
-
-  /* Default settings from datasheet. */
-  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
-                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
-                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
-                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
-                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
-
-
-  // setup for the radio
-  if (!manager.init()){
-    Serial.println("init of the radio failed");
-  }
-  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
-  // you can set transmitter powers from 5 to 23 dBm:
-  //driver.setTxPower(23, false);
-  
   digitalWrite(LED_BUILTIN, LOW); // switch off the led once the setup is finish
   Serial.println("Fin du setup");
 }
 
 
-/*******************************************************************************************************/
-/*
-   Function for time management
-*/
-/*******************************************************************************************************/
-
-unsigned long getUnixTimeM(DateTime instant){
-  unsigned long minutes;
-  minutes = (unsigned long) (instant.unixtime()/60);
-  return(minutes);
-}
-
-int DurationLastSend(unsigned long start, DateTime instant){
-  int duration;
-  duration = int ((unsigned long) (instant.unixtime()/60) - start);
-  return(duration);
-}
-unsigned long getUnixTimeS(DateTime instant){
-  unsigned long minutes;
-  minutes = (unsigned long) (instant.unixtime());
-  return(minutes);
-}
-
-int DurationLastSendS(unsigned long start, DateTime instant){
-  int duration;
-  duration = int ((unsigned long) (instant.unixtime()) - start);
-  return(duration);
-}
-
-String getDate() {
-  DateTime now = rtc.now();
-  int Year = now.year();
-  int Month = now.month();
-  int Day = now.day();
-  String Date = String(Day) + '/' + String(Month) + '/' + String(Year);
-  return(Date);
-}
-String getHoraireHM(){
-  DateTime now = rtc.now();
-  int Hour = now.hour();
-  int Minute = now.minute();
-  String Horaire = String(Hour) + ":" + String(Minute);
-  return(Horaire);
-}
-String getMomentDatalog(){
-  String moment = getDate() + " " + getHoraireHM() + ";";
-  return(moment);
-}
-
-/*******************************************************************************************************/
-/*
+/*******************************************************************************************************
    Function for sensor reading
-*/
 /*******************************************************************************************************/
 
 float measureRainGauge(){
@@ -371,7 +342,7 @@ float measureBatteryVoltage(){
   return(measuredvbat);
 }
 
-float measureBatteryTemp(){
+float measureBatteryTemp(byte pinBatteryTemp){
   // this function take an int corresponding of the value of reading of the thermistor
   // the correlation is make with the equation on :
   // https://en.wikipedia.org/wiki/Thermistor
@@ -399,16 +370,13 @@ float measureBatteryTemp(){
   return (tempBattery);
 }
 
-/*
-   group some function in order to have more readable code
-*/
 
 void loop(){
 
   if (loopLaunch == 1){
     // done this only one time
     // to show that the loop is launch
-    Serial.println("La boucle est lancée");
+    Serial.println("The loop is launched");
     blinkLed13();
     loopLaunch = 0;
   }
@@ -457,7 +425,7 @@ void loop(){
     maStationMeteo.codingMessage();
     
     if(affiche){ // display the value of the sensor in the class
-      displayData();
+      displayDataSerial(maStationMeteo, instant);
     }
 
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
@@ -466,34 +434,40 @@ void loop(){
 
     // Sending the data through the LoRa radio
     // the data are inside maStationMeteo._radioBuffer
-    if (manager.sendtoWait(maStationMeteo._radioBuffer, sizeof(maStationMeteo._radioBuffer), SERVER_ADDRESS)){
-      // Now wait for a reply from the server
-      uint8_t len = sizeof(buf);
-      uint8_t from;   
-      if (manager.recvfromAckTimeout(buf, &len, 2000, &from)){
-        Serial.print("got reply from : 0x");
-        Serial.print(from, HEX);
-        Serial.print(": ");
+
+    rf95.send(maStationMeteo._radioBuffer, sizeof(maStationMeteo._radioBuffer));
+
+    // Now wait for a reply
+    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+  
+    Serial.println("Waiting for reply...");
+    if (rf95.waitAvailableTimeout(1000))
+    { 
+      // Should be a reply message for us now   
+      if (rf95.recv(buf, &len)){
+        Serial.print("Got reply: ");
         Serial.println((char*)buf);
+        Serial.print("RSSI : ");
+        Serial.println(rf95.lastRssi(), DEC);    
       }
       else{
-        Serial.println("No reply, is rf95_reliable_datagram_server running?");
+        Serial.println("Receive failed");
       }
     }
     else{
-      Serial.println("sendtoWait failed");
-  }
-    
+      Serial.println("No reply, is there a listener around?");
+    }
   }
 }
 
 void blinkLed13(){
   //blink the LED on pin 13 of the board
 
-  for(int k=0; k<20; k++){
-
+  for(int k=0; k<10; k++){
     digitalWrite(LED_BUILTIN, HIGH); //switch on the led
     delay(100);
     digitalWrite(LED_BUILTIN, LOW);//switch of the led
+    delay(100);
   }
 }
