@@ -32,6 +32,11 @@ AdafruitIO_Feed *batteryStationFeed = io.feed("battery-station");
 AdafruitIO_Feed *batteryReceiverFeed = io.feed("battery-receiver");
 
 // define the radio parameter
+// Pin for feather m0 RFM9x
+#define RFM95_CS 8
+#define RFM95_RST 4
+#define RFM95_INT 3
+
 // Singleton instance of the radio driver
 RH_RF95 driver;
 // Class to manage message delivery and receipt, using the driver declared above
@@ -59,10 +64,10 @@ bool waitMessage = false;
 
 // info on the battery
 float batteryReceiverVoltage;
-byte pinBatteryVoltage = A7;
+#define pinBatteryVoltage A7
 
 // info for the SD card
-const byte pinCSsd = 4;
+#define pinCSsd 4
 String Filename = "datalog.txt";
 
 // define the lcd screen

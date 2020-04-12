@@ -26,14 +26,12 @@ int countdown;
 int i;
 
 //Definition des Pins des capteurs
-const byte pinWindSpeed = 3;
-const byte pinRain = 4;
-const byte pinDHT22 = 5;
+#define pinWindSpeed 12
+#define pinRain 11
+#define pinDHT22 15
 
-const byte pinBatteryTemp = A1;
-const byte pinBatteryVoltage = A7;
-const byte pinWindDir = A6;
-const byte pinRef3V3 = A7;
+#define pinBatteryVoltage A7
+#define pinWindDir A5
 
 // creation of the object
 WeatherStation maStationMeteo;
@@ -65,8 +63,15 @@ BH1745NUC bh;
 #define CLIENT_ADDRESS 1
 #define SERVER_ADDRESS 2
 
+// parameter for feather m0 RFM9x
+#define RFM95_CS 8
+#define RFM95_RST 4
+#define RFM95_INT 3
+
+#define RF95_FREQ 915.0
+
 // Singleton instance of the radio driver
-RH_RF95 driver;
+RH_RF95 driver(RFM95_CS, RFM95_INT);
 
 // Class to manage message delivery and receipt, using the driver declared above
 RHReliableDatagram manager(driver, CLIENT_ADDRESS);
@@ -491,44 +496,4 @@ void blinkLed13(){
     delay(100);
     digitalWrite(LED_BUILTIN, LOW);//switch of the led
   }
-}
-
-void displayData(){
-  // display the data on the serial
-
-  Serial.println("*************************************************");
-  Serial.print("Mesure à ");
-  Serial.println(getMomentDatalog());
-  Serial.println("*************************************************");
-  Serial.print("Pluie : ");
-  Serial.println(maStationMeteo.getRain());
-  Serial.print("Vitesse vent : ");
-  Serial.println(maStationMeteo.getWindSpeed());
-  Serial.print("Direction du vent : ");
-  Serial.println(maStationMeteo.getWindDir());
-  Serial.print("Température DHT22 : ");
-  Serial.println(maStationMeteo.getTempDHT());
-  Serial.print("Humidité : ");
-  Serial.println(maStationMeteo.getHumidity());
-  Serial.print("Pression : ");
-  Serial.println(maStationMeteo.getPressure());
-  Serial.print("Température BMP : ");
-  Serial.println(maStationMeteo.getTempBMP());
-  Serial.print("Température RTC : ");
-  Serial.println(maStationMeteo.getTempRTC());
-  Serial.print("Lumière claire : ");
-  Serial.println(maStationMeteo.getLight());
-  Serial.print("Lumière rouge : ");
-  Serial.println(maStationMeteo.getLightRed());
-  Serial.print("Lumière verte : ");
-  Serial.println(maStationMeteo.getLightGreen());
-  Serial.print("Lumière bleue : ");
-  Serial.println(maStationMeteo.getLightBlue());
-
-  Serial.println("*************************************************");
-  Serial.print("Message radio : ");
-  for(int j=0; j < 62; j++){
-    Serial.print(maStationMeteo._radioBuffer[j], HEX);  
-  }
-  Serial.println("*************************************************");
 }
