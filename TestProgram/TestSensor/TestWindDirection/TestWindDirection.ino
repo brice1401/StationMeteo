@@ -1,4 +1,4 @@
-byte PinDirection = A3;
+byte PinDirection = A5;
 
 void setup() {
   Serial.begin(9600);
@@ -8,7 +8,7 @@ void loop()
 {
   float Vent = getWindDirection();
   Serial.println(Vent);
-  delay(300);
+  delay(500);
 }
 
 float getWindDirection()
