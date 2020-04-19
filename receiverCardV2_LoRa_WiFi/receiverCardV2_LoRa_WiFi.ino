@@ -2,7 +2,7 @@
  * This code :
  *  receive the data from the weather station by LoRa
  *  save the data on the SD card
- *  send the data to Adafruit IO by wifi 
+ *  send the data to the ESP8266 by I2C 
  */
 
 #include <RH_RF95.h>
@@ -11,21 +11,10 @@
 #include "displaySaveData.h"
 #include "RTClib.h"
 #include <Wire.h>
+#include "wiring_private.h"
 #include <config.h>
 #include <SD.h>
 
-
-// define the feed for the radio
-AdafruitIO_Feed *rainLastSendFeed = io.feed("rain-last-send");
-AdafruitIO_Feed *rain24hFeed = io.feed("rain24h");
-AdafruitIO_Feed *rain7dFeed = io.feed("rain7d");
-AdafruitIO_Feed *windDirFeed = io.feed("wind-dir");
-AdafruitIO_Feed *windSpeedFeed = io.feed("wind-speed");
-AdafruitIO_Feed *temperatureFeed = io.feed("temperature");
-AdafruitIO_Feed *humidityFeed = io.feed("humidity");
-AdafruitIO_Feed *pressureFeed = io.feed("pressure");
-AdafruitIO_Feed *batteryStationFeed = io.feed("battery-station");
-AdafruitIO_Feed *batteryReceiverFeed = io.feed("battery-receiver");
 
 // define the radio parameter
 // Pin for feather m0 RFM9x
@@ -69,6 +58,14 @@ String Filename = "datalog.txt";
 
 // define the lcd screen
 Adafruit_LiquidCrystal lcd(0); // #0 (A0-A2 not jumpered)
+
+// paramater for the second I2C bus
+// creation of a new I2C bus
+#define pinSDA 11// D11 : SDA
+#define pinSCL 13// D13 : SCL
+TwoWire myWire(&sercom1, pinSDA, pinSCL);
+#define ADDRESS_FEATHER (0x50) // address of the feather as slave
+
 
 void setup() {
 
@@ -143,6 +140,14 @@ void setup() {
   // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
   // you can set transmitter powers from 5 to 23 dBm:
   rf95.setTxPower(23, false);
+
+  // init the second I2C bus
+  myWire.begin(ADDRESS_FEATHER);
+  // Assign pins 13 & 11 to SERCOM functionality
+  pinPeripheral(pinSDA, PIO_SERCOM);
+  pinPeripheral(pinSCL, PIO_SERCOM);
+
+  myWire.onRequest(receiveEvent); // attach the function "receiveEvent if a request is received
 }
 
 void loop() {
@@ -173,8 +178,7 @@ void loop() {
         maStationMeteo.decodingMessage();
         // add the rssi to the data
         maStationMeteo._RSSI = rf95.lastRssi();
-        // send the data to Adafruit IO
-        sendDataAdafruitIO();
+        
         // save data on the SD card of the datalogger
         writeDataSD(Filename, maStationMeteo, instant);
   
@@ -192,27 +196,7 @@ void loop() {
   }
 }
 
-void sendDataAdafruitIO(){
-  
-  // calculate the index, the direction of wind and the battery voltage
-  maStationMeteo.calculateIndex();
-  maStationMeteo.windDirAngle2Direction();
-  batteryReceiverVoltage = measureBatteryVoltage();
-  maStationMeteo._batteryReceiverVoltage = batteryReceiverVoltage; // out it inside the object to save it
 
-  // send all the data to the adafruit IO feed
-    
-  rainLastSendFeed->save(maStationMeteo.getRain());
-  rain24hFeed->save(maStationMeteo.getRain24h());
-  rain7dFeed->save(maStationMeteo.getRain7d());
-  windDirFeed->save(maStationMeteo._iconName);
-  windSpeedFeed->save(maStationMeteo.getWindSpeed());
-  temperatureFeed->save(maStationMeteo._avgTemp);
-  humidityFeed->save(maStationMeteo.getHumidity());
-  pressureFeed->save(maStationMeteo.getPressure());
-  batteryStationFeed->save(maStationMeteo.getBatteryVoltage());
-  batteryReceiverFeed->save(batteryReceiverVoltage);
-}
 
 int averageAnalogRead(int pinToRead, byte numberOfReadings){
   // function return the average value read from an analog input
@@ -238,4 +222,17 @@ float measureBatteryVoltage(){
   measuredvbat /= 1024; // convert to voltage
   
   return(measuredvbat);
+}
+
+void receiveEvent(){
+  // founction for the second i2c
+}
+
+// Attach the interrupt handler to the SERCOM
+extern "C" {
+  void SERCOM1_Handler(void);
+
+  void SERCOM1_Handler(void) {
+    myWire.onService();
+  }
 }

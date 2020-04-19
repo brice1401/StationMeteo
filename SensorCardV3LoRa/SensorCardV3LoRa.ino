@@ -6,13 +6,14 @@
 //Ajout des librairies
 #include <SPI.h>
 #include <Wire.h>
-#include "weatherStation.h"
-#include "RTClib.h"
 #include <DHT.h>
+#include <RTClib.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
-#include "BH1745NUC.h"
+#include <Adafruit_SleepyDog.h>
 #include <RH_RF95.h>
+#include "BH1745NUC.h"
+#include "weatherStation.h"
 #include "displaySaveData.h"
 
 
@@ -30,8 +31,8 @@ int i;
 #define pinRain 11
 #define pinDHT22 15
 
-#define pinBatteryVoltage A7
-#define pinWindDir A5
+static const byte pinBatteryVoltage = A7;
+static const byte pinWindDir = A5;
 
 // creation of the object
 WeatherStation maStationMeteo;
@@ -331,7 +332,6 @@ int averageAnalogRead(int pinToRead, byte numberOfReadings){
 float measureBatteryVoltage(){
   /*
    * Return the voltage of the battery
-   * 
    */  
 
   float measuredvbat = averageAnalogRead(pinBatteryVoltage, 20); //read the battery voltage using 64 points of measure
@@ -380,6 +380,7 @@ void loop(){
     blinkLed13();
     loopLaunch = 0;
   }
+
   
   // the description of the code is explained in the excel document
   
@@ -414,7 +415,8 @@ void loop(){
     maStationMeteo.setLightBlue(bh.getBlueColor()/100);
     
     //measure infos of the battery
-
+    maStationMeteo.setBatteryVoltage(measureBatteryVoltage());
+    
     //add the Temp of the RTC to the data
     maStationMeteo.setTempRTC(rtc.getTemperature());
 
@@ -442,8 +444,7 @@ void loop(){
     uint8_t len = sizeof(buf);
   
     Serial.println("Waiting for reply...");
-    if (rf95.waitAvailableTimeout(1000))
-    { 
+    if (rf95.waitAvailableTimeout(1000)){ 
       // Should be a reply message for us now   
       if (rf95.recv(buf, &len)){
         Serial.print("Got reply: ");
@@ -458,7 +459,19 @@ void loop(){
     else{
       Serial.println("No reply, is there a listener around?");
     }
+    rf95.sleep();
   }
+
+  // the measures are done are it is not time, put the card on sleep
+  // the card will sleep for the maximum amount of time (8s)
+  
+  Watchdog.sleep();
+
+  // after wake up, reattach the usb connexion
+  // the connexion is lost during sleep
+#if defined(USBCON) && !defined(USE_TINYUSB)
+  USBDevice.attach();
+#endif
 }
 
 void blinkLed13(){
