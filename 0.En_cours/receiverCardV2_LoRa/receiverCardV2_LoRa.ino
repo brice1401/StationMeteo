@@ -12,8 +12,8 @@
 #include "RTClib.h"
 #include <Wire.h>
 #include "wiring_private.h"
-#include <config.h>
 #include <SD.h>
+#include <Adafruit_SleepyDog.h>
 
 
 // define the radio parameter
@@ -64,6 +64,27 @@ String Filename = "datalog.txt";
 TwoWire myWire(&sercom1, pinSDA, pinSCL);
 #define ADDRESS_FEATHER (0x50) // address of the feather as slave
 
+// parameter for the tranfer of data
+const byte pinWakeESP = 5; // put at high to say to the ESP that the feather is ready
+volatile byte transferDone;
+volatile uint8_t sending; // to keep in memory the number of group send by I2C
+const uint8_t numberSending;
+
+// Union to convert float to byte
+union floatToBytes {
+    char buffer[4];
+    float value;
+  };
+
+// def of unions to convert the float to byte to send them to esp8266
+volatile floatToBytes rain24h;
+volatile floatToBytes rain7d;
+volatile floatToBytes windDir;
+volatile floatToBytes windSpeed;
+volatile floatToBytes temperature;
+volatile floatToBytes humidity;
+volatile floatToBytes pressure;
+volatile floatToBytes batteryVoltage;
 
 void setup() {
 
@@ -142,6 +163,15 @@ void setup() {
   pinPeripheral(pinSCL, PIO_SERCOM);
 
   myWire.onRequest(receiveEvent); // attach the function "receiveEvent if a request is received
+
+  // to wake up the esp
+  pinMode(pinWakeESP, OUTPUT);
+  digitalWrite(pinWakeESP, LOW);
+
+  // for the transfer of data
+  transferDone = 0;
+  sending = 0;
+  numberSending = 8;
 }
 
 void loop() {
@@ -170,6 +200,13 @@ void loop() {
         // decryption of the message
         maStationMeteo.setRadioBufferReceive(buf);
         maStationMeteo.decodingMessage();
+        
+        // calculate the temp index
+        maStationMeteo.calculateIndex();
+        
+        // Add the rain to the data
+        addRainGroup(instant); // the value is always inside "maStationMeteo"
+        
         // add the rssi to the data
         maStationMeteo._RSSI = rf95.lastRssi();
         
@@ -186,11 +223,31 @@ void loop() {
         // a message was received, it's time to put the radio module in sleep mode
         rf95.sleep();
 
-        // send the data to the ESP8266
+        // prepare the data to the ESP8266
+        rain24h.value = maStationMeteo.getRain24h();
+        rain7d.value = maStationMeteo.getRain7d();
+        windDir.value = maStationMeteo.getWindDir();
+        windSpeed.value = maStationMeteo.getWindSpeed();
+        temperature.value = maStationMeteo._avgTemp;
+        humidity.value = maStationMeteo.getHumidity();
+        batteryVoltage.value = maStationMeteo.getBatteryVoltage();
+        pressure.value = maStationMeteo.getPressure();
+
+        // indicate to the ESP8266 that the data are ready to transfer
+        digitalWrite(pinWakeESP, HIGH);
+
+        while(!transferDone){
+          delay(10);
+        }
         
+        transferDone = 0; // as the transfer is done, put the value to 0 for the next
       }
     }
   }
+  
+
+  // put the feather to sleep for 8 sec
+  int sleepMS = Watchdog.sleep(8000);
 }
 
 
@@ -222,7 +279,38 @@ float measureBatteryVoltage(){
 }
 
 void receiveEvent(){
-  // founction for the second i2c
+  // handler for the second i2c (myWire)
+  // execute the code to send data to the esp8266
+
+  switch(sending){
+    case 0:
+      myWire.write(rain24h.buffer);
+      break;
+    case 1:
+      myWire.write(rain7d.buffer);
+      break;
+    case 2:
+      myWire.write(windDir.buffer);
+      break;
+    case 3:
+      myWire.write(windSpeed.buffer);
+      break;
+    case 4:
+      myWire.write(temperature.buffer);
+      break;
+    case 5:
+      myWire.write(humidity.buffer);
+      break;
+    case 6:
+      myWire.write(pressure.buffer);
+      break;
+    case 7:
+      myWire.write(batteryVoltage.buffer);
+      transferDone = 1; //the transfer is completed
+      break;
+  }
+
+  sending = (sending + 1) % numberSending;
 }
 
 // Attach the interrupt handler to the SERCOM

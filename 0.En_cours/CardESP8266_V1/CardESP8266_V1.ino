@@ -28,9 +28,34 @@ AdafruitIO_Feed *batteryReceiverFeed = io.feed("battery-receiver");
 //define the weatherStationObect
 WeatherStation maStationMeteo;
 
+// Union to convert byte to float
+union floatToBytes {
+    char buffer[4];
+    float value;
+  };
+
+// def of unions to convert the received byte to float
+floatToBytes rain24h;
+floatToBytes rain7d;
+floatToBytes windDir;
+floatToBytes windSpeed;
+floatToBytes temperature;
+floatToBytes humidity;
+floatToBytes pressure;
+floatToBytes batteryVoltage;
+
+// parameter for sleeping
+uint8_t sleepingTime = 30; // time for sleep in seconds
+byte statu; //
+byte pinReady = 14; // the feather will put this pin to high to indicate it is ready to transfer data
+
+
+
 void setup() {
 
   Serial.begin(115200);
+
+  pinMode(pinReady, INPUT);
 
   // start the I2C bus
   Wire.begin();
@@ -44,37 +69,101 @@ void setup() {
     Serial.print(".");
     delay(500);
   }
+
+  statu = digitalRead(pinReady);
+  if(statu == HIGH){
+    //the feather as 
+    // run the io library
+    io.run();
+  
+    // Demand the data to the feather
+    // rain on 24h
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    i2cReading(rain24h);
+    //rain on 7d
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    i2cReading(rain7d);
+    // wind direction
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    i2cReading(windDir);
+    // wind speed
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    i2cReading(windSpeed);
+    // temperature
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    i2cReading(temperature);
+    // humidity
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    i2cReading(humidity);
+    // pression atm
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    i2cReading(pressure);
+    // voltage battery sensor
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    i2cReading(batteryVoltage);
+    
+    // send the data to Adafruit IO
+    sendDataAdafruitIO();
+  
+    // if the Feather doesn't give the info to be ready
+    // or the data are send
+    // put to sleep for 1 min
+    ESP.deeepSleep(sleepingTime * 1000000); // the time here is in micro-seconds
+
+  }
+
 }
 
 void loop() {
-
-  // Always keep this at the top of your main loop
-  // While not confirmed, this implies that the Adafruit IO library is not event-driven
-  // This means you should refrain from using infinite loops
-  io.run();
-
-  // Demand the data to the feather
-  
-  // send the data to Adafruit IO
-  sendDataAdafruitIO();
+  // no loop because the code is only launch once
 }
 
 void sendDataAdafruitIO(){
   
-  // calculate the index, the direction of wind and the forecast
-  maStationMeteo.calculateIndex();
-  maStationMeteo.windDirAngle2Direction();
-  maStationMeteo.pressure2Forecast();
-
   // send all the data to the adafruit IO feed
     
-  rain24hFeed->save(maStationMeteo.getRain24h());
-  rain7dFeed->save(maStationMeteo.getRain7d());
-  windDirFeed->save(maStationMeteo._iconNameWindDir);
-  windSpeedFeed->save(maStationMeteo.getWindSpeed());
-  temperatureFeed->save(maStationMeteo._avgTemp);
-  humidityFeed->save(maStationMeteo.getHumidity());
-  batteryStationFeed->save(maStationMeteo.getBatteryVoltage());
-  batteryReceiverFeed->save(batteryReceiverVoltage);
-  forecastFeed->save(maStationMeteo._iconPressureForecast);
+  rain24hFeed->save(rain24h.value);
+  rain7dFeed->save(rain7d.value);
+  windDirFeed->save(windDirAngle2Direction(windDir.value));
+  windSpeedFeed->save(windSpeed.value);
+  temperatureFeed->save(temperature.value);
+  humidityFeed->save(humidity.value);
+  forecastFeed->save(pressure2Forecast(pressure.value));
+  batteryStationFeed->save(batteryVoltage.value);
+}
+
+String pressure2Forecast(float pressure){
+  // set the string value for the icon for pressure in the adafruitIO
+  
+  if (pressure<1006){
+    return("w:rain");
+ }
+ if((pressure < 1013) && (pressure >= 1006)){
+      return("w:day-rain");
+ }
+ if((pressure < 1020) && (pressure >= 1013)){
+      return("w:day-sunny-overcast");
+ }
+ if(pressure >= 1020){
+      return("w:day-sunny");
+ }
+}
+
+String windDirAngle2Direction(float windDir){
+  // set the string value for the icon for temperature in the adafruitIO
+  int angle =  windDir;
+  String iconName = "w:wind__from-";
+  
+  angle = (angle + 180) % 360;
+  iconName = iconName + String(angle) + "-deg";
+  return(iconName);
+}
+
+void i2cReading(floatToBytes unionVariable){
+  uint8_t j = 0;
+  while(Wire.available()){
+    byte c = Wire.read();
+    unionVariable.buffer[j] = c;
+    j += 1;
+  }
 }
