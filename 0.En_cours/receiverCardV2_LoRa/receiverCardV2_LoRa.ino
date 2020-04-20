@@ -56,8 +56,6 @@ float batteryReceiverVoltage;
 #define pinCSsd 10
 String Filename = "datalog.txt";
 
-// define the lcd screen
-Adafruit_LiquidCrystal lcd(0); // #0 (A0-A2 not jumpered)
 
 // paramater for the second I2C bus
 // creation of a new I2C bus
@@ -98,10 +96,6 @@ void setup() {
     Serial.println(F("Something wrong happened, please to the setup again")); 
     while(1){}
   }
-
-
-  // init the lcd screen
-  lcd.begin(16, 2);
 
   //init the radio
   pinMode(RFM95_RST, OUTPUT);
@@ -191,6 +185,9 @@ void loop() {
         waitMessage = false;
         // a message was received, it's time to put the radio module in sleep mode
         rf95.sleep();
+
+        // send the data to the ESP8266
+        
       }
     }
   }
