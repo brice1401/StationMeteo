@@ -462,10 +462,9 @@ void loop(){
     rf95.sleep();
   }
 
-  // the measures are done are it is not time, put the card on sleep
-  // the card will sleep for the maximum amount of time (8s)
+  // the measures are done or it is not time, put the card on sleep for 8s
   
-  Watchdog.sleep();
+  Watchdog.sleep(8000);
 
   // after wake up, reattach the usb connexion
   // the connexion is lost during sleep

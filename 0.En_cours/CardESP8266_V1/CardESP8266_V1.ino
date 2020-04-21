@@ -46,7 +46,7 @@ floatToBytes batteryVoltage;
 
 // parameter for sleeping
 uint8_t sleepingTime = 30; // time for sleep in seconds
-byte statu; //
+byte transferReady; //
 byte pinReady = 14; // the feather will put this pin to high to indicate it is ready to transfer data
 
 
@@ -56,6 +56,8 @@ void setup() {
   Serial.begin(115200);
 
   pinMode(pinReady, INPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
 
   // start the I2C bus
   Wire.begin();
@@ -70,8 +72,9 @@ void setup() {
     delay(500);
   }
 
-  statu = digitalRead(pinReady);
-  if(statu == HIGH){
+  transferReady = digitalRead(pinReady);
+  digitalWrite(LED_BUILTIN, LOW); // turn on the LED
+  if(transferReady == HIGH){
     //the feather as 
     // run the io library
     io.run();
@@ -104,18 +107,19 @@ void setup() {
     
     // send the data to Adafruit IO
     sendDataAdafruitIO();
-  
-    // if the Feather doesn't give the info to be ready
-    // or the data are send
-    // put to sleep for 1 min
-    ESP.deeepSleep(sleepingTime * 1000000); // the time here is in micro-seconds
-
   }
+  delay(1000);
+  // if the Feather doesn't give the info to be ready
+  // or the data are send
+  // put to sleep for 1 min
+  digitalWrite(LED_BUILTIN, HIGH); // turn off the led
+  ESP.deepSleep(sleepingTime * 1000000); // the time here is in micro-seconds
 
 }
 
 void loop() {
   // no loop because the code is only launch once
+  // once the esp quit sleeping, it reset
 }
 
 void sendDataAdafruitIO(){

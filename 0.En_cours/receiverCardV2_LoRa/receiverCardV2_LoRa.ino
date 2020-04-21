@@ -1,9 +1,9 @@
 /*
- * This code :
- *  receive the data from the weather station by LoRa
- *  save the data on the SD card
- *  send the data to the ESP8266 by I2C 
- */
+   This code :
+    receive the data from the weather station by LoRa
+    save the data on the SD card
+    send the data to the ESP8266 by I2C
+*/
 
 #include <RH_RF95.h>
 #include <SPI.h>
@@ -67,24 +67,24 @@ TwoWire myWire(&sercom1, pinSDA, pinSCL);
 // parameter for the tranfer of data
 const byte pinWakeESP = 5; // put at high to say to the ESP that the feather is ready
 volatile byte transferDone;
-volatile uint8_t sending; // to keep in memory the number of group send by I2C
-const uint8_t numberSending;
+volatile uint8_t sending = 0; // to keep in memory the number of group send by I2C
+const uint8_t numberSending = 8;
 
 // Union to convert float to byte
 union floatToBytes {
-    char buffer[4];
-    float value;
-  };
+  char buffer[4];
+  float value;
+};
 
 // def of unions to convert the float to byte to send them to esp8266
-volatile floatToBytes rain24h;
-volatile floatToBytes rain7d;
-volatile floatToBytes windDir;
-volatile floatToBytes windSpeed;
-volatile floatToBytes temperature;
-volatile floatToBytes humidity;
-volatile floatToBytes pressure;
-volatile floatToBytes batteryVoltage;
+floatToBytes rain24h;
+floatToBytes rain7d;
+floatToBytes windDir;
+floatToBytes windSpeed;
+floatToBytes temperature;
+floatToBytes humidity;
+floatToBytes pressure;
+floatToBytes batteryVoltage;
 
 void setup() {
 
@@ -104,7 +104,7 @@ void setup() {
   }
   Serial.println(F("RTC ready"));
   delay(200);
-  
+
   //init the Sd card on the ethernet shield
   if (!SD.begin(pinCSsd)) {
     Serial.println(F("Card failed, or not present"));
@@ -112,10 +112,10 @@ void setup() {
   }
   Serial.println(F("SD ready"));
   delay(200);
-  
-  if(errorSetup){
-    Serial.println(F("Something wrong happened, please to the setup again")); 
-    while(1){}
+
+  if (errorSetup) {
+    Serial.println(F("Something wrong happened, please to the setup again"));
+    while (1) {}
   }
 
   //init the radio
@@ -170,26 +170,24 @@ void setup() {
 
   // for the transfer of data
   transferDone = 0;
-  sending = 0;
-  numberSending = 8;
 }
 
 void loop() {
 
   // check for time
   instant = rtc.now();
-  
-  if(((getUnixTimeM(instant) % MinuteBetweenSend) == MinuteBetweenSend -1)  || (waitMessage)){
+
+  if (((getUnixTimeM(instant) % MinuteBetweenSend) == MinuteBetweenSend - 1)  || (waitMessage)) {
     // the radio is waiting for a message 1 min before it will be send
     waitMessage = true;
-    
+
     // check for radio message
     //the first call will wake up the radio module
-    if (rf95.available()){
+    if (rf95.available()) {
       // Wait for a message addressed to us from the client
       uint8_t len = sizeof(buf);
       uint8_t from;
-      if (rf95.recv(buf, &len)){
+      if (rf95.recv(buf, &len)) {
         //a message is received
         RH_RF95::printBuffer("Received: ", buf, len);
         Serial.print("Got: ");
@@ -200,19 +198,19 @@ void loop() {
         // decryption of the message
         maStationMeteo.setRadioBufferReceive(buf);
         maStationMeteo.decodingMessage();
-        
+
         // calculate the temp index
         maStationMeteo.calculateIndex();
-        
+
         // Add the rain to the data
-        addRainGroup(instant); // the value is always inside "maStationMeteo"
-        
+        maStationMeteo.addRainGroup(instant); // the value is already inside "maStationMeteo"
+
         // add the rssi to the data
         maStationMeteo._RSSI = rf95.lastRssi();
-        
+
         // save data on the SD card of the datalogger
         writeDataSD(Filename, maStationMeteo, instant);
-  
+
         // Send a reply back to the originator client
         uint8_t response[] = "Thanks for the data";
         rf95.send(response, sizeof(data));
@@ -236,15 +234,16 @@ void loop() {
         // indicate to the ESP8266 that the data are ready to transfer
         digitalWrite(pinWakeESP, HIGH);
 
-        while(!transferDone){
+        while (!transferDone) {
           delay(10);
         }
-        
+
         transferDone = 0; // as the transfer is done, put the value to 0 for the next
+        digitalWrite(pinWakeESP, LOW); // authorise the ESP to sleep
       }
     }
   }
-  
+
 
   // put the feather to sleep for 8 sec
   int sleepMS = Watchdog.sleep(8000);
@@ -252,11 +251,11 @@ void loop() {
 
 
 
-int averageAnalogRead(int pinToRead, byte numberOfReadings){
+int averageAnalogRead(int pinToRead, byte numberOfReadings) {
   // function return the average value read from an analog input
   unsigned int runningValue = 0;
 
-  for (int x = 0 ; x < numberOfReadings ; x++){
+  for (int x = 0 ; x < numberOfReadings ; x++) {
     runningValue += analogRead(pinToRead);
     delay(100); // add a delay of 100ms between two measure
   }
@@ -265,47 +264,47 @@ int averageAnalogRead(int pinToRead, byte numberOfReadings){
   return (runningValue);
 }
 
-float measureBatteryVoltage(){
+float measureBatteryVoltage() {
   /*
-   * Return the voltage of the battery
-   */  
+     Return the voltage of the battery
+  */
 
   float measuredvbat = averageAnalogRead(pinBatteryVoltage, 64); //read the battery voltage using 64 points of measure
   measuredvbat *= 2; // we divided by 2, so multiply back
   measuredvbat *= 3.3; // Multiply by 3.3V, our reference voltage
   measuredvbat /= 1024; // convert to voltage
-  
-  return(measuredvbat);
+
+  return (measuredvbat);
 }
 
-void receiveEvent(){
+void receiveEvent() {
   // handler for the second i2c (myWire)
   // execute the code to send data to the esp8266
 
-  switch(sending){
+  switch (sending) {
     case 0:
-      myWire.write(rain24h.buffer);
+      myWire.write(rain24h.buffer, 4);
       break;
     case 1:
-      myWire.write(rain7d.buffer);
+      myWire.write(rain7d.buffer, 4);
       break;
     case 2:
-      myWire.write(windDir.buffer);
+      myWire.write(windDir.buffer, 4);
       break;
     case 3:
-      myWire.write(windSpeed.buffer);
+      myWire.write(windSpeed.buffer, 4);
       break;
     case 4:
-      myWire.write(temperature.buffer);
+      myWire.write(temperature.buffer, 4);
       break;
     case 5:
-      myWire.write(humidity.buffer);
+      myWire.write(humidity.buffer, 4);
       break;
     case 6:
-      myWire.write(pressure.buffer);
+      myWire.write(pressure.buffer, 4);
       break;
     case 7:
-      myWire.write(batteryVoltage.buffer);
+      myWire.write(batteryVoltage.buffer, 4);
       transferDone = 1; //the transfer is completed
       break;
   }
