@@ -450,6 +450,7 @@ void loop(){
   }
 
   // the measures are done or it is not time, put the card on sleep for 8s
+  digitalWrite(LED_BUILTIN, LOW);
   Serial.println("The feather is going to sleep");
   Watchdog.sleep(8000);
 
@@ -458,6 +459,9 @@ void loop(){
 #if defined(USBCON) && !defined(USE_TINYUSB)
   USBDevice.attach();
 #endif
+
+  digitalWrite(LED_BUILTIN, HIGH);
+  Serial.println("Feather woke up");
 }
 
 void blinkLed13(){
