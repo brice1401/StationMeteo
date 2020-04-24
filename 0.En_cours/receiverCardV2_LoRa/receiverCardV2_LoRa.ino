@@ -253,9 +253,14 @@ void loop() {
     }
   }
 
-  Serial.println("Put the feather to sleep").
+  Serial.println("Put the feather to sleep");
   // put the feather to sleep for 8 sec
   int sleepMS = Watchdog.sleep(8000);
+  while (!Serial) {
+    // wait for serial bus to be active (M0)
+    delay(1);
+  }
+  Serial.println("The feaher has woken up");
 }
 
 
