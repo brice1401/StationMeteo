@@ -5,6 +5,9 @@
     send the data to the ESP8266 by I2C
 */
 
+// for debugging
+uint8_t comptLoop = 0;
+
 #include <RH_RF95.h>
 #include <SPI.h>
 #include "weatherStation.h"
@@ -26,7 +29,7 @@
 #define RF95_FREQ 434.0
 
 // Singleton instance of the radio driver
-RH_RF95 rf95;
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 uint8_t data[] = "And hello back to you";
 // Dont put this on the stack:
@@ -90,6 +93,11 @@ void setup() {
 
   Serial.begin(115200);
 
+  while (!Serial) {
+    // wait for serial bus to be active (M0)
+    delay(1);
+  }
+  
   byte errorSetup = 0; // to stop the setup if something wrong happen
 
   //init the rtc
@@ -114,7 +122,7 @@ void setup() {
   delay(200);
 
   if (errorSetup) {
-    Serial.println(F("Something wrong happened, please to the setup again"));
+    Serial.println(F("Something wrong happened, please do the setup again"));
     while (1) {}
   }
 
@@ -122,11 +130,6 @@ void setup() {
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
 
-  while (!Serial) {
-    //wait for serial comunication to be ready
-    delay(1);
-  }
-  delay(100);
 
   Serial.println("Feather LoRa RX Test!");
   // manual reset
@@ -178,8 +181,12 @@ void loop() {
   instant = rtc.now();
 
   if (((getUnixTimeM(instant) % MinuteBetweenSend) == MinuteBetweenSend - 1)  || (waitMessage)) {
+    
     // the radio is waiting for a message 1 min before it will be send
     waitMessage = true;
+
+    Serial.println("Waiting for a message");
+    delay(1000);
 
     // check for radio message
     //the first call will wake up the radio module
@@ -190,6 +197,7 @@ void loop() {
       if (rf95.recv(buf, &len)) {
         //a message is received
         RH_RF95::printBuffer("Received: ", buf, len);
+        Serial.println("**************************************************************************************");
         Serial.print("Got: ");
         Serial.println((char*)buf);
         Serial.print("RSSI: ");
@@ -234,17 +242,18 @@ void loop() {
         // indicate to the ESP8266 that the data are ready to transfer
         digitalWrite(pinWakeESP, HIGH);
 
+        Serial.println("Sending data to the ESP8266");
         while (!transferDone) {
           delay(10);
         }
-
+        Serial.println("Transfer done");
         transferDone = 0; // as the transfer is done, put the value to 0 for the next
         digitalWrite(pinWakeESP, LOW); // authorise the ESP to sleep
       }
     }
   }
 
-
+  Serial.println("Put the feather to sleep").
   // put the feather to sleep for 8 sec
   int sleepMS = Watchdog.sleep(8000);
 }

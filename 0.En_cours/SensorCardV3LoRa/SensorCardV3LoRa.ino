@@ -12,7 +12,6 @@
 #include <Adafruit_BMP280.h>
 #include <Adafruit_SleepyDog.h>
 #include <RH_RF95.h>
-#include "BH1745NUC.h"
 #include "weatherStation.h"
 #include "displaySaveData.h"
 
@@ -24,7 +23,6 @@ unsigned long UnixTimeLastRadioS;
 int SecondBetweenSend = 1;
 unsigned long LastDisplay;
 int countdown;
-int i;
 
 //Definition des Pins des capteurs
 #define pinWindSpeed 12
@@ -58,7 +56,6 @@ long LastWindCheck;
 RTC_DS3231 rtc;
 Adafruit_BMP280 bmp;
 DHT dht(pinDHT22, DHT22);
-BH1745NUC bh;
 
 // parameters for the radio
 // parameter for feather m0 RFM9x
@@ -102,7 +99,6 @@ void setup()
   }
   
   LastDisplay = millis();
-  i = 1;
   
   // init serial com and Led to show the start of the code
   Serial.println("debut du code");
@@ -133,8 +129,10 @@ void setup()
   //init DHT
   dht.begin();
   Serial.println("DHT OK");
-  delay(200);
-
+  
+  //Serial.print("Free RAM : ");
+  //Serial.println(FreeRam());
+  
   //init the BMP
   if (!bmp.begin()) {
     Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
@@ -150,15 +148,6 @@ void setup()
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                   Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
                   
-  
-  //Init the BH1745 (light sensor)
-  bh.Initialize();
-  if(!bh.begin()){
-    Serial.println(F("Could not find a valid BH1745 sensor, check wiring!"));
-    errorSensor = 1;
-  }
-  Serial.println("BH1745 OK");
-  delay(200);
 
   // init the RTC
   // use to init the RTC module
@@ -388,6 +377,8 @@ void loop(){
   instant = rtc.now();
   
   if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSend){ //pour mesures toutes les minutes
+
+  Serial.println("It's time to do the measures !");
   
   //if(DurationLastSendS(UnixTimeLastRadioS, instant) >= 15){ 
     //pour mesure toutes les 10s
@@ -408,13 +399,7 @@ void loop(){
     maStationMeteo.setTempBMP(bmp.readTemperature());
     maStationMeteo.setPressure(bmp.readPressure()/100); // pressure in hPa
     
-    //measure light, divide by 100, to have smaller number (less than 2^15)
-    maStationMeteo.setLight(bh.getClearColor()/100);
-    maStationMeteo.setLightRed(bh.getRedColor()/100);
-    maStationMeteo.setLightGreen(bh.getGreenColor()/100);
-    maStationMeteo.setLightBlue(bh.getBlueColor()/100);
-    
-    //measure infos of the battery
+    //measure voltage of the battery
     maStationMeteo.setBatteryVoltage(measureBatteryVoltage());
     
     //add the Temp of the RTC to the data
@@ -431,14 +416,16 @@ void loop(){
     }
 
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
-    UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message
+    // UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message
 
 
     // Sending the data through the LoRa radio
     // the data are inside maStationMeteo._radioBuffer
 
+    Serial.println("Sending data");
     rf95.send(maStationMeteo._radioBuffer, sizeof(maStationMeteo._radioBuffer));
-
+    Serial.println("Data send");
+    
     // Now wait for a reply
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
@@ -463,7 +450,7 @@ void loop(){
   }
 
   // the measures are done or it is not time, put the card on sleep for 8s
-  
+  Serial.println("The feather is going to sleep");
   Watchdog.sleep(8000);
 
   // after wake up, reattach the usb connexion
@@ -483,3 +470,12 @@ void blinkLed13(){
     delay(100);
   }
 }
+
+
+/*
+extern "C" char *sbrk(int i);
+
+int FreeRam () {
+  char stack_dummy = 0;
+  return &stack_dummy - sbrk(0);
+}*/

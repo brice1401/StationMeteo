@@ -72,8 +72,12 @@ void setup() {
     delay(500);
   }
 
+  Serial.println("Setup initial done !");
+  blinkLED();
+  
   transferReady = digitalRead(pinReady);
   digitalWrite(LED_BUILTIN, LOW); // turn on the LED
+  
   if(transferReady == HIGH){
     //the feather as 
     // run the io library
@@ -170,4 +174,14 @@ void i2cReading(floatToBytes unionVariable){
     unionVariable.buffer[j] = c;
     j += 1;
   }
+}
+
+void blinkLED(){
+  for(int j=0; j<10; j++){
+    digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
+    delay(200);
+    digitalWrite(LED_BUILTIN, LOW); // turn on the LED
+    delay(200);
+  }
+  
 }
