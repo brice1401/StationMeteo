@@ -7,6 +7,7 @@
 
 // for debugging
 uint8_t comptLoop = 0;
+#define debug true
 
 #include <RH_RF95.h>
 #include <SPI.h>
@@ -173,6 +174,8 @@ void setup() {
 
   // for the transfer of data
   transferDone = 0;
+
+  pinMode(LED_BUILTIN, OUTPUT);
 }
 
 void loop() {
@@ -253,14 +256,18 @@ void loop() {
     }
   }
 
+#if debug
   Serial.println("Put the feather to sleep");
+  digitalWrite(LED_BUILTIN, LOW);
   // put the feather to sleep for 8 sec
   int sleepMS = Watchdog.sleep(8000);
-  while (!Serial) {
-    // wait for serial bus to be active (M0)
-    delay(1);
-  }
+#if defined(USBCON) && !defined(USE_TINYUSB)
+  USBDevice.attach();
+#endif
   Serial.println("The feaher has woken up");
+  digitalWrite(LED_BUILTIN, HIGH);
+#endif
+
 }
 
 
