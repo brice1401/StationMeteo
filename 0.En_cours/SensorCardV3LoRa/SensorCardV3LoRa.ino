@@ -23,14 +23,15 @@ unsigned long UnixTimeLastRadioS;
 int SecondBetweenSend = 1;
 unsigned long LastDisplay;
 int countdown;
+#define debug true
 
 //Definition des Pins des capteurs
 #define pinWindSpeed 12
 #define pinRain 11
-#define pinDHT22 15
+#define pinDHT22 18
+#define pinWindDir 19
+#define pinBatteryVoltage 9
 
-static const byte pinBatteryVoltage = A7;
-static const byte pinWindDir = A5;
 
 // creation of the object
 WeatherStation maStationMeteo;
@@ -41,7 +42,7 @@ unsigned long UnixTime;
 unsigned long UnixTimeLastRadio;
 unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
-int MinuteBetweenSend = 2; // number of minute between two sensor acquisition
+int MinuteBetweenSend = 10; // number of minute between two sensor acquisition
 
 
 // def of variable for code of sensor functions
@@ -382,7 +383,7 @@ void loop(){
   
   //if(DurationLastSendS(UnixTimeLastRadioS, instant) >= 15){ 
     //pour mesure toutes les 10s
-    //the last message was send X minutes ago
+    //the last message was send MinuteBetweenSend minutes ago
     //it's time to measure and to send a new message
 
     // check the wind speed
@@ -449,6 +450,9 @@ void loop(){
     rf95.sleep();
   }
 
+
+#if !debug //the card is not put to sleep during debug
+
   // the measures are done or it is not time, put the card on sleep for 8s
   digitalWrite(LED_BUILTIN, LOW);
   Serial.println("The feather is going to sleep");
@@ -462,6 +466,7 @@ void loop(){
 
   digitalWrite(LED_BUILTIN, HIGH);
   Serial.println("Feather woke up");
+#endif
 }
 
 void blinkLed13(){
