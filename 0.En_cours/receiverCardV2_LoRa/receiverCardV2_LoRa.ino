@@ -256,7 +256,7 @@ void loop() {
     }
   }
 
-#if debug
+#if !debug
   Serial.println("Put the feather to sleep");
   digitalWrite(LED_BUILTIN, LOW);
   // put the feather to sleep for 8 sec
