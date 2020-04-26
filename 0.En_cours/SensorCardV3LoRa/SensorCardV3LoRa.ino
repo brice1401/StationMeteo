@@ -17,12 +17,11 @@
 
 
 // pour le debuggage
-byte affiche = 1;
 byte loopLaunch = 1;
 unsigned long UnixTimeLastRadioS;
 int SecondBetweenSend = 1;
 unsigned long LastDisplay;
-int countdown;
+int comptLoop = 0;
 #define debug true
 
 //Definition des Pins des capteurs
@@ -376,6 +375,16 @@ void loop(){
   
   //look at the time :
   instant = rtc.now();
+
+#if debug
+  if(comptLoop == 0){
+    Serial.print("Measures in : ");
+    Serial.print(MinuteBetweenSend - DurationLastSend(UnixTimeLastRadio, instant));
+    Serial.println(" min");
+  }
+  comptLoop = (comptLoop + 1) % 60;
+  delay(1000);
+#endif
   
   if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSend){ //pour mesures toutes les minutes
 
@@ -412,9 +421,10 @@ void loop(){
     //element for the radio
     maStationMeteo.codingMessage();
     
-    if(affiche){ // display the value of the sensor in the class
+#if debug 
+      // display the value of the sensor in the class
       displayDataSerial(maStationMeteo, instant);
-    }
+#endif
 
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
     // UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message
