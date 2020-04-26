@@ -6,8 +6,8 @@
 */
 
 // for debugging
-uint8_t comptLoop = 0;
 #define debug true
+uint8_t comptLoop = 0;
 
 #include <RH_RF95.h>
 #include <SPI.h>
@@ -188,9 +188,13 @@ void loop() {
     // the radio is waiting for a message 1 min before it will be send
     waitMessage = true;
 
-    Serial.println("Waiting for a message");
-    delay(1000);
-
+#if debug
+    if (comptLoop == 0){
+      Serial.println("Waiting for a message");
+    }
+    comptLoop = (comptLoop + 1) % 20;
+    delay(500);
+#endif
     // check for radio message
     //the first call will wake up the radio module
     if (rf95.available()) {
@@ -241,6 +245,11 @@ void loop() {
         humidity.value = maStationMeteo.getHumidity();
         batteryVoltage.value = maStationMeteo.getBatteryVoltage();
         pressure.value = maStationMeteo.getPressure();
+
+#if debug
+        // display the data inside the WeatherStation object
+        displayDataSerial(maStationMeteo, instant);
+#endif
 
         // indicate to the ESP8266 that the data are ready to transfer
         digitalWrite(pinWakeESP, HIGH);
