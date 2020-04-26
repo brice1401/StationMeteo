@@ -27,7 +27,7 @@ int comptLoop = 0;
 //Definition des Pins des capteurs
 #define pinWindSpeed 12
 #define pinRain 11
-#define pinDHT22 18
+#define pinDHT22 18 
 #define pinWindDir 19
 #define pinBatteryVoltage 9
 
