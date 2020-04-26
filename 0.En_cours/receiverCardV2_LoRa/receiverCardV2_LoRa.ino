@@ -1,9 +1,9 @@
 /*
-   This code :
-    receive the data from the weather station by LoRa
-    save the data on the SD card
-    send the data to the ESP8266 by I2C
-*/
+ *  This code :
+ *   receive the data from the weather station by LoRa
+ *   save the data on the SD card
+ *   send the data to the ESP8266 by I2C
+ */
 
 // for debugging
 #define debug true
@@ -69,7 +69,7 @@ TwoWire myWire(&sercom1, pinSDA, pinSCL);
 #define ADDRESS_FEATHER (0x50) // address of the feather as slave
 
 // parameter for the tranfer of data
-const byte pinWakeESP = 5; // put at high to say to the ESP that the feather is ready
+#define pinWakeESP  12 // put at high to say to the ESP that the feather is ready
 volatile byte transferDone;
 volatile uint8_t sending = 0; // to keep in memory the number of group send by I2C
 const uint8_t numberSending = 8;
@@ -192,7 +192,7 @@ void loop() {
     if (comptLoop == 0){
       Serial.println("Waiting for a message");
     }
-    comptLoop = (comptLoop + 1) % 20;
+    comptLoop = (comptLoop + 1) % 50;
     delay(500);
 #endif
     // check for radio message
@@ -253,6 +253,8 @@ void loop() {
 
         // indicate to the ESP8266 that the data are ready to transfer
         digitalWrite(pinWakeESP, HIGH);
+
+        delay(5000);
 
        /*
        Serial.println("Sending data to the ESP8266");

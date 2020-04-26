@@ -7,6 +7,10 @@
 #include <Wire.h>
 #include "weatherStation.h"
 
+// for debbugging
+#define debug true
+uint8_t comptLoop = 0;
+
 // parameter for the i2c communication
 #define ADDRESS_FEATHER (0x50) // address of the slave
 byte buff[64]; // buffer to receive the data from the feather
@@ -74,13 +78,33 @@ void setup() {
 
   Serial.println("Setup initial done !");
   blinkLED();
-  
+
+}
+
+void loop() {
+  // no loop because the code is only launch once
+  // once the esp quit sleeping, it reset
+
   transferReady = digitalRead(pinReady);
   digitalWrite(LED_BUILTIN, LOW); // turn on the LED
-  
+
+#if debug
+  if(comptLoop == 0){
+    Serial.println("En attente du signal");
+  }
+  delay(500);
+  comptLoop = (comptLoop + 1) % 30;
+   
+#endif
+
   if(transferReady == HIGH){
     //the feather as 
     // run the io library
+
+#if debug  
+  Serial.println("Début du transfert de données");
+#endif
+
     io.run();
   
     // Demand the data to the feather
@@ -108,22 +132,44 @@ void setup() {
     // voltage battery sensor
     Wire.requestFrom(ADDRESS_FEATHER, 4);
     i2cReading(batteryVoltage);
-    
+
+#if debug
+    Serial.println("Fin du tranfert");
+    Serial.print("Pluie 24h : ");
+    Serial.println(rain24h.value);
+    Serial.print("Pluie 7d : ");
+    Serial.println(rain7d.value);
+    Serial.print("Direction du vent : ");
+    Serial.println(windDirAngle2Direction(windDir.value));
+    Serial.print("Vitesse du vent : ");
+    Serial.println(windSpeed.value);
+    Serial.print("Température : ");
+    Serial.println(temperature.value);
+    Serial.print("Humidité : ");
+    Serial.println(humidity.value);
+    Serial.print("Prevision barométrique : ");
+    Serial.println(pressure2Forecast(pressure.value));
+    Serial.print("Voltage de la batterie : ");
+    Serial.println(batteryVoltage.value);
+
+    Serial.println("Transfert vers adafruit IO");
+#endif
+
     // send the data to Adafruit IO
     sendDataAdafruitIO();
   }
   delay(1000);
+
+#if !debug
   // if the Feather doesn't give the info to be ready
   // or the data are send
   // put to sleep for 1 min
   digitalWrite(LED_BUILTIN, HIGH); // turn off the led
   ESP.deepSleep(sleepingTime * 1000000); // the time here is in micro-seconds
+#endif
+
 
 }
-
-void loop() {
-  // no loop because the code is only launch once
-  // once the esp quit sleeping, it reset
 }
 
 void sendDataAdafruitIO(){
