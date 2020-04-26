@@ -8,6 +8,7 @@
 // for debugging
 #define debug true
 uint8_t comptLoop = 0;
+#define SDdeMerde true 
 
 #include <RH_RF95.h>
 #include <SPI.h>
@@ -114,6 +115,7 @@ void setup() {
   Serial.println(F("RTC ready"));
   delay(200);
 
+#if !SDdeMerde
   //init the Sd card on the ethernet shield
   if (!SD.begin(pinCSsd)) {
     Serial.println(F("Card failed, or not present"));
@@ -121,6 +123,7 @@ void setup() {
   }
   Serial.println(F("SD ready"));
   delay(200);
+#endif
 
   if (errorSetup) {
     Serial.println(F("Something wrong happened, please do the setup again"));
@@ -195,6 +198,7 @@ void loop() {
     comptLoop = (comptLoop + 1) % 50;
     delay(500);
 #endif
+
     // check for radio message
     //the first call will wake up the radio module
     if (rf95.available()) {
@@ -223,8 +227,10 @@ void loop() {
         // add the rssi to the data
         maStationMeteo._RSSI = rf95.lastRssi();
 
+#if !SDdeMerde
         // save data on the SD card of the datalogger
         writeDataSD(Filename, maStationMeteo, instant);
+#endif
 
         // Send a reply back to the originator client
         uint8_t response[] = "Thanks for the data";

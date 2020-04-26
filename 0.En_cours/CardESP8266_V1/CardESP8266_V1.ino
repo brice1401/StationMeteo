@@ -53,7 +53,14 @@ uint8_t sleepingTime = 30; // time for sleep in seconds
 byte transferReady; //
 byte pinReady = 14; // the feather will put this pin to high to indicate it is ready to transfer data
 
-
+void blinkLED(){
+  for(int j=0; j<10; j++){
+    digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
+    delay(200);
+    digitalWrite(LED_BUILTIN, LOW); // turn on the LED
+    delay(200);
+  }
+}
 
 void setup() {
 
@@ -79,6 +86,58 @@ void setup() {
   Serial.println("Setup initial done !");
   blinkLED();
 
+}
+
+void sendDataAdafruitIO(){
+  
+  // send all the data to the adafruit IO feed
+    
+  rain24hFeed->save(rain24h.value);
+  rain7dFeed->save(rain7d.value);
+  windDirFeed->save(windDirAngle2Direction(windDir.value));
+  windSpeedFeed->save(windSpeed.value);
+  temperatureFeed->save(temperature.value);
+  humidityFeed->save(humidity.value);
+  forecastFeed->save(pressure2Forecast(pressure.value));
+  batteryStationFeed->save(batteryVoltage.value);
+}
+
+String pressure2Forecast(float pressure){
+  // set the string value for the icon for pressure in the adafruitIO
+  
+  if (pressure<1006){
+    return("w:rain");
+ }
+ if((pressure < 1013) && (pressure >= 1006)){
+      return("w:day-rain");
+ }
+ if((pressure < 1020) && (pressure >= 1013)){
+      return("w:day-sunny-overcast");
+ }
+ if(pressure >= 1020){
+      return("w:day-sunny");
+ }
+}
+
+String windDirAngle2Direction(float windDir){
+  // set the string value for the icon for temperature in the adafruitIO
+  int angle =  windDir;
+  String iconName = "w:wind__from-";
+  
+  angle = (angle + 180) % 360;
+  iconName = iconName + String(angle) + "-deg";
+  return(iconName);
+}
+
+void i2cReading(floatToBytes unionVariable){
+  uint8_t j = 0;
+  while(Wire.available()){
+    byte c = Wire.read();
+    unionVariable.buffer[j] = c;
+    j += 1;
+  }
+  Serial.println("reception de :");
+  Serial.println(unionVariable.value);
 }
 
 void loop() {
@@ -168,66 +227,4 @@ void loop() {
   ESP.deepSleep(sleepingTime * 1000000); // the time here is in micro-seconds
 #endif
 
-
-}
-}
-
-void sendDataAdafruitIO(){
-  
-  // send all the data to the adafruit IO feed
-    
-  rain24hFeed->save(rain24h.value);
-  rain7dFeed->save(rain7d.value);
-  windDirFeed->save(windDirAngle2Direction(windDir.value));
-  windSpeedFeed->save(windSpeed.value);
-  temperatureFeed->save(temperature.value);
-  humidityFeed->save(humidity.value);
-  forecastFeed->save(pressure2Forecast(pressure.value));
-  batteryStationFeed->save(batteryVoltage.value);
-}
-
-String pressure2Forecast(float pressure){
-  // set the string value for the icon for pressure in the adafruitIO
-  
-  if (pressure<1006){
-    return("w:rain");
- }
- if((pressure < 1013) && (pressure >= 1006)){
-      return("w:day-rain");
- }
- if((pressure < 1020) && (pressure >= 1013)){
-      return("w:day-sunny-overcast");
- }
- if(pressure >= 1020){
-      return("w:day-sunny");
- }
-}
-
-String windDirAngle2Direction(float windDir){
-  // set the string value for the icon for temperature in the adafruitIO
-  int angle =  windDir;
-  String iconName = "w:wind__from-";
-  
-  angle = (angle + 180) % 360;
-  iconName = iconName + String(angle) + "-deg";
-  return(iconName);
-}
-
-void i2cReading(floatToBytes unionVariable){
-  uint8_t j = 0;
-  while(Wire.available()){
-    byte c = Wire.read();
-    unionVariable.buffer[j] = c;
-    j += 1;
-  }
-}
-
-void blinkLED(){
-  for(int j=0; j<10; j++){
-    digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
-    delay(200);
-    digitalWrite(LED_BUILTIN, LOW); // turn on the LED
-    delay(200);
-  }
-  
 }
