@@ -15,9 +15,24 @@ TwoWire myWire(&sercom1, pinSDA, pinSCL);
 RTC_PCF8523 rtc;
 
 int sending = 0;
-// Test message
+uint8_t transferDone = 0;
+uint8_t numberSending = 8;
 
-byte message[] = {0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90, 0xA0};
+// Union to convert float to byte
+union floatToBytes {
+  byte buffer[4];
+  float value;
+};
+
+// def of unions to convert the float to byte to send them to esp8266
+floatToBytes rain24h;
+floatToBytes rain7d;
+floatToBytes windDir;
+floatToBytes windSpeed;
+floatToBytes temperature;
+floatToBytes humidity;
+floatToBytes pressure;
+floatToBytes batteryVoltage;
 
 void setup() {
   Serial.begin(115200);
@@ -33,6 +48,16 @@ void setup() {
     while (1);
   }
 
+
+  // prepare the data to the ESP8266
+  rain24h.value = 2.4;
+  rain7d.value = 5.8;
+  windDir.value = 0;
+  windSpeed.value = 10.3;
+  temperature.value = 25.4;
+  humidity.value = 60.1;
+  batteryVoltage.value = 3.82;
+  pressure.value = 1010;
   
 }
  
@@ -44,25 +69,51 @@ void loop() {
   Serial.print("Second : ");
   Serial.println(now.second());
 
+  if(transferDone){
+    Serial.println("Success, the transfer is done");
+  }
+
   delay(2000);
+
+  
 }
 
 // function that executes whenever data is received from master
 // this function is registered as an event, see setup()
-void receiveEvent(){
-  Serial.println("Demande d'info");
 
-  if(sending == 2){
-    sending = 0;
+void receiveEvent() {
+  // handler for the second i2c (myWire)
+  // execute the code to send data to the esp8266
+
+  switch (sending) {
+    case 0:
+      myWire.write(rain24h.buffer, 4);
+      break;
+    case 1:
+      myWire.write(rain7d.buffer, 4);
+      break;
+    case 2:
+      myWire.write(windDir.buffer, 4);
+      break;
+    case 3:
+      myWire.write(windSpeed.buffer, 4);
+      break;
+    case 4:
+      myWire.write(temperature.buffer, 4);
+      break;
+    case 5:
+      myWire.write(humidity.buffer, 4);
+      break;
+    case 6:
+      myWire.write(pressure.buffer, 4);
+      break;
+    case 7:
+      myWire.write(batteryVoltage.buffer, 4);
+      transferDone = 1; //the transfer is completed
+      break;
   }
-  
-  if(sending < 2){
-    for(int i=0; i<5; i++){
-      // write 5 bytes to the buffer
-      myWire.write(message[5*sending + i]);
-    }
-    sending += 1;
-  }
+
+  sending = (sending + 1) % numberSending;
 }
 
 // Attach the interrupt handler to the SERCOM

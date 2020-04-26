@@ -13,9 +13,6 @@ uint8_t comptLoop = 0;
 
 // parameter for the i2c communication
 #define ADDRESS_FEATHER (0x50) // address of the slave
-byte buff[64]; // buffer to receive the data from the feather
-#define nbAsking 7 // to have all 64 possible bytes
-#define bytePerMessage 10 // number of byte asked by the master
 
 
 // define the feed for the dashboard
@@ -34,7 +31,7 @@ WeatherStation maStationMeteo;
 
 // Union to convert byte to float
 union floatToBytes {
-    char buffer[4];
+    byte buffer[4];
     float value;
   };
 
@@ -94,18 +91,16 @@ void loop() {
   }
   delay(500);
   comptLoop = (comptLoop + 1) % 30;
-   
 #endif
 
   if(transferReady == HIGH){
-    //the feather as 
-    // run the io library
+    // the feather has sent the signal
 
 #if debug  
   Serial.println("Début du transfert de données");
 #endif
 
-    io.run();
+    io.run(); // run the io library
   
     // Demand the data to the feather
     // rain on 24h

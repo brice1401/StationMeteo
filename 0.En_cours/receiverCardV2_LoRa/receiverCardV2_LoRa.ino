@@ -76,7 +76,7 @@ const uint8_t numberSending = 8;
 
 // Union to convert float to byte
 union floatToBytes {
-  char buffer[4];
+  byte buffer[4];
   float value;
 };
 
