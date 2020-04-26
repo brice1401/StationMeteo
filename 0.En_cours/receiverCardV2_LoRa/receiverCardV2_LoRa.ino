@@ -50,7 +50,7 @@ unsigned long UnixTimeLastRadio;
 unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
 int MinuteBetweenSend = 10; // number of minute between two sensor acquisition
-bool waitMessage = false;
+bool waitMessage = true;
 
 // info on the battery
 float batteryReceiverVoltage;
@@ -245,10 +245,12 @@ void loop() {
         // indicate to the ESP8266 that the data are ready to transfer
         digitalWrite(pinWakeESP, HIGH);
 
-        Serial.println("Sending data to the ESP8266");
+       /*
+       Serial.println("Sending data to the ESP8266");
         while (!transferDone) {
           delay(10);
         }
+        */
         Serial.println("Transfer done");
         transferDone = 0; // as the transfer is done, put the value to 0 for the next
         digitalWrite(pinWakeESP, LOW); // authorise the ESP to sleep
@@ -256,6 +258,8 @@ void loop() {
     }
   }
 
+
+// sleeping Mode
 #if !debug
   Serial.println("Put the feather to sleep");
   digitalWrite(LED_BUILTIN, LOW);
