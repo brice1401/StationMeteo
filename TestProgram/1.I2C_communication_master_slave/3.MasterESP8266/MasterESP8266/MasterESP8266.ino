@@ -6,9 +6,11 @@
 
 #define ADDRESS_FEATHER (0x50) // address of the slave
 
-byte buff[10]; // to store the data receive
-int asking = 0;
-int j = 0;
+// Union to convert byte to float
+union floatToBytes {
+    byte buffer[4];
+    float value;
+  };
 
 
 // Union to convert byte to float
