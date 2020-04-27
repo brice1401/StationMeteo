@@ -36,6 +36,7 @@ floatToBytes batteryVoltage;
 
 void setup() {
   Serial.begin(115200);
+  Serial.println("A table");
   myWire.begin(ADDRESS_FEATHER);
   // Assign pins 13 & 11 to SERCOM functionality
   pinPeripheral(pinSDA, PIO_SERCOM);
@@ -45,7 +46,7 @@ void setup() {
 
   if (! rtc.begin()) {
     Serial.println("Couldn't find RTC");
-    while (1);
+    while (1){};
   }
 
 
@@ -58,6 +59,12 @@ void setup() {
   humidity.value = 60.1;
   batteryVoltage.value = 3.82;
   pressure.value = 1010;
+
+  Serial.println("Valeur du buffer de rain");
+  
+  for(int j=0; j<4; j++){
+    Serial.print(rain24h.buffer[j], HEX);
+  }
   
 }
  
@@ -66,9 +73,7 @@ void loop() {
 
   DateTime now = rtc.now();
 
-  Serial.print("Second : ");
-  Serial.println(now.second());
-
+  
   if(transferDone){
     Serial.println("Success, the transfer is done");
   }
