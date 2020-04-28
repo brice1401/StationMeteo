@@ -45,9 +45,9 @@ static const uint8_t pinReady  = D5; // the feather will put this pin to high to
 void blinkLED(){
   for(int j=0; j<10; j++){
     digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
-    delay(200);
+    delay(100);
     digitalWrite(LED_BUILTIN, LOW); // turn on the LED
-    delay(200);
+    delay(100);
   }
 }
 
@@ -75,6 +75,99 @@ void setup() {
   Serial.println("Setup initial done !");
   blinkLED();
 
+    transferReady = digitalRead(pinReady);
+  digitalWrite(LED_BUILTIN, LOW); // turn on the LED
+
+#if debug
+  if(comptLoop == 0){
+    Serial.println("En attente du signal");
+  }
+  delay(500);
+  comptLoop = (comptLoop + 1) % 30;
+  
+  
+#endif
+
+  if(transferReady == HIGH){
+    // the feather has sent the signal
+
+#if debug  
+  Serial.println("Début du transfert de données");
+#endif
+
+    io.run(); // run the io library
+  
+    // Demand the data to the feather
+    // rain on 24h
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    rain24h = i2cReading();
+    delay(200);
+    //rain on 7d
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    rain7d = i2cReading();
+    delay(200);
+    // wind direction
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    windDir = i2cReading();
+    delay(200);
+    // wind speed
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    windSpeed = i2cReading();
+    delay(200);
+    // temperature
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    temperature = i2cReading();
+    delay(200);
+    // humidity
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    humidity = i2cReading();
+    delay(200);
+    // pression atm
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    pressure = i2cReading();
+    delay(200);
+    // voltage battery sensor
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    batteryVoltage = i2cReading();
+    delay(200);
+
+#if debug
+
+    Serial.println("Fin du tranfert");
+    Serial.print("Pluie 24h : ");
+    Serial.println(rain24h);
+    Serial.print("Pluie 7d : ");
+    Serial.println(rain7d);
+    Serial.print("Direction du vent : ");
+    Serial.println(windDirAngle2Direction(windDir));
+    Serial.print("Vitesse du vent : ");
+    Serial.println(windSpeed);
+    Serial.print("Température : ");
+    Serial.println(temperature);
+    Serial.print("Humidité : ");
+    Serial.println(humidity);
+    Serial.print("Prevision barométrique : ");
+    Serial.println(pressure2Forecast(pressure));
+    Serial.print("Voltage de la batterie : ");
+    Serial.println(batteryVoltage);
+
+    Serial.println("Transfert vers adafruit IO");
+#endif
+
+    // send the data to Adafruit IO
+    sendDataAdafruitIO();
+  }
+  //delay(30000);
+
+#if debug
+  // if the Feather doesn't give the info to be ready
+  // or the data are send
+  // put to sleep for 1 min
+  digitalWrite(LED_BUILTIN, HIGH); // turn off the led
+  Serial.println("Going to sleep");
+  ESP.deepSleep(sleepingTime * 1000000); // the time here is in micro-seconds
+#endif
+
 }
 
 void sendDataAdafruitIO(){
@@ -89,6 +182,7 @@ void sendDataAdafruitIO(){
   humidityFeed->save(humidity);
   forecastFeed->save(pressure2Forecast(pressure));
   batteryStationFeed->save(batteryVoltage);
+
 }
 
 String pressure2Forecast(float pressure){
@@ -147,88 +241,6 @@ void loop() {
   // no loop because the code is only launch once
   // once the esp quit sleeping, it reset
 
-  transferReady = digitalRead(pinReady);
-  digitalWrite(LED_BUILTIN, LOW); // turn on the LED
 
-#if debug
-  if(comptLoop == 0){
-    Serial.println("En attente du signal");
-  }
-  delay(500);
-  comptLoop = (comptLoop + 1) % 30;
-  
-  
-#endif
-
-  if(transferReady == HIGH){
-    // the feather has sent the signal
-
-#if debug  
-  Serial.println("Début du transfert de données");
-#endif
-
-    io.run(); // run the io library
-  
-    // Demand the data to the feather
-    // rain on 24h
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    rain24h = i2cReading();
-    //rain on 7d
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    rain7d = i2cReading();
-    // wind direction
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    windDir = i2cReading();
-    // wind speed
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    windSpeed = i2cReading();
-    // temperature
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    temperature = i2cReading();
-    // humidity
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    humidity = i2cReading();
-    // pression atm
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    pressure = i2cReading();
-    // voltage battery sensor
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    batteryVoltage = i2cReading();
-
-#if debug
-
-    Serial.println("Fin du tranfert");
-    Serial.print("Pluie 24h : ");
-    Serial.println(rain24h);
-    Serial.print("Pluie 7d : ");
-    Serial.println(rain7d);
-    Serial.print("Direction du vent : ");
-    Serial.println(windDirAngle2Direction(windDir));
-    Serial.print("Vitesse du vent : ");
-    Serial.println(windSpeed);
-    Serial.print("Température : ");
-    Serial.println(temperature);
-    Serial.print("Humidité : ");
-    Serial.println(humidity);
-    Serial.print("Prevision barométrique : ");
-    Serial.println(pressure2Forecast(pressure));
-    Serial.print("Voltage de la batterie : ");
-    Serial.println(batteryVoltage);
-
-    Serial.println("Transfert vers adafruit IO");
-#endif
-
-    // send the data to Adafruit IO
-    sendDataAdafruitIO();
-  }
-  //delay(30000);
-
-#if !debug
-  // if the Feather doesn't give the info to be ready
-  // or the data are send
-  // put to sleep for 1 min
-  digitalWrite(LED_BUILTIN, HIGH); // turn off the led
-  ESP.deepSleep(sleepingTime * 1000000); // the time here is in micro-seconds
-#endif
 
 }

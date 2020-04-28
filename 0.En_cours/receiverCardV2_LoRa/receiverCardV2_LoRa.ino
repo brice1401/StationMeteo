@@ -286,17 +286,15 @@ void loop() {
         // indicate to the ESP8266 that the data are ready to transfer
         digitalWrite(pinWakeESP, HIGH);
 
-        delay(5000);
-
-       
         Serial.println("Sending data to the ESP8266");
-        while (!transferDone) {
-          delay(10);
-        }
-        
+
+        Serial.println(transferDone);
+
+        digitalWrite(pinWakeESP, LOW); // authorise the ESP to sleep
         Serial.println("Transfer done");
         transferDone = 0; // as the transfer is done, put the value to 0 for the next
-        digitalWrite(pinWakeESP, LOW); // authorise the ESP to sleep
+        delay(500);
+        
       }
     }
   }
