@@ -62,11 +62,6 @@ void setup() {
   batteryVoltage.value = 3.82;
   pressure.value = 1010;
 
-  Serial.println("Valeur du buffer de rain");
-  
-  for(int j=0; j<4; j++){
-    Serial.print(rain24h.buffer[j], HEX);
-  }
   
 }
  

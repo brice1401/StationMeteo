@@ -9,22 +9,18 @@ uint8_t comptLoop = 0;
 
 
 
-// Union to convert byte to float
-union floatToBytes {
-    byte buffer[4];
-    float value;
-  };
+
 
   
 // def of unions to convert the received byte to float
-floatToBytes rain24h;
-floatToBytes rain7d;
-floatToBytes windDir;
-floatToBytes windSpeed;
-floatToBytes temperature;
-floatToBytes humidity;
-floatToBytes pressure;
-floatToBytes batteryVoltage;
+float rain24h;
+float rain7d;
+float windDir;
+float windSpeed;
+float temperature;
+float humidity;
+float pressure;
+float batteryVoltage;
 
 
 void setup() {
@@ -43,61 +39,82 @@ void loop() {
     // Demand the data to the feather
     // rain on 24h
     Wire.requestFrom(ADDRESS_FEATHER, 4);
-    i2cReading(rain24h);
+    rain24h = i2cReading();
     //rain on 7d
     Wire.requestFrom(ADDRESS_FEATHER, 4);
-    i2cReading(rain7d);
+    rain7d = i2cReading();
     // wind direction
     Wire.requestFrom(ADDRESS_FEATHER, 4);
-    i2cReading(windDir);
+    windDir = i2cReading();
     // wind speed
     Wire.requestFrom(ADDRESS_FEATHER, 4);
-    i2cReading(windSpeed);
+    windSpeed = i2cReading();
     // temperature
     Wire.requestFrom(ADDRESS_FEATHER, 4);
-    i2cReading(temperature);
+    temperature = i2cReading();
     // humidity
     Wire.requestFrom(ADDRESS_FEATHER, 4);
-    i2cReading(humidity);
+    humidity = i2cReading();
     // pression atm
     Wire.requestFrom(ADDRESS_FEATHER, 4);
-    i2cReading(pressure);
+    pressure = i2cReading();
     // voltage battery sensor
     Wire.requestFrom(ADDRESS_FEATHER, 4);
-    i2cReading(batteryVoltage);
+    batteryVoltage = i2cReading();
   
     Serial.println("Fin du tranfert");
     Serial.print("Pluie 24h : ");
-    Serial.println(rain24h.value);
+    Serial.println(rain24h);
     Serial.print("Pluie 7d : ");
-    Serial.println(rain7d.value);
+    Serial.println(rain7d);
     Serial.print("Direction du vent : ");
-    Serial.println(windDirAngle2Direction(windDir.value));
+    Serial.println(windDirAngle2Direction(windDir));
     Serial.print("Vitesse du vent : ");
-    Serial.println(windSpeed.value);
+    Serial.println(windSpeed);
     Serial.print("Température : ");
-    Serial.println(temperature.value);
+    Serial.println(temperature);
     Serial.print("Humidité : ");
-    Serial.println(humidity.value);
+    Serial.println(humidity);
     Serial.print("Prevision barométrique : ");
-    Serial.println(pressure2Forecast(pressure.value));
+    Serial.println(pressure2Forecast(pressure));
     Serial.print("Voltage de la batterie : ");
-    Serial.println(batteryVoltage.value);
+    Serial.println(batteryVoltage);
     
     comptLoop = comptLoop+1;
   }
+
+  delay(10000);
+  comptLoop = 0;
+
+   rain24h = 0;
+   rain7d = 0;
+   windDir = 0;
+   windSpeed = 0;
+   temperature = 0;
+   humidity = 0;
+   pressure = 0;
+   batteryVoltage = 0;
   
 }
 
-void i2cReading(floatToBytes unionVariable){
+float i2cReading(){
+  
+// Union to convert byte to float
+  union byte2Float {
+    byte buffer[4];
+    float value;
+  } conversion;
+  
   uint8_t j = 0;
+  
   while(Wire.available()){
     byte c = Wire.read();
-    unionVariable.buffer[j] = c;
+    conversion.buffer[j] = c;
     j += 1;
   }
-  Serial.println("reception de :");
-  Serial.println(unionVariable.value);
+
+  //return the float value of the union
+  return(conversion.value);
 }
 
 String windDirAngle2Direction(float windDir){
