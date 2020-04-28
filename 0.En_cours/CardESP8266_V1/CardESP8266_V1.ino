@@ -40,7 +40,7 @@ float batteryVoltage;
 // parameter for sleeping
 uint8_t sleepingTime = 30; // time for sleep in seconds
 byte transferReady; //
-byte pinReady = 14; // the feather will put this pin to high to indicate it is ready to transfer data
+static const uint8_t pinReady  = D5; // the feather will put this pin to high to indicate it is ready to transfer data
 
 void blinkLED(){
   for(int j=0; j<10; j++){
@@ -134,6 +134,11 @@ float i2cReading(){
     j += 1;
   }
 
+#if debug
+  Serial.print("Reception de : ");
+  Serial.println(conversion.value);
+#endif
+  
   //return the float value of the union
   return(conversion.value);
 }
@@ -151,6 +156,8 @@ void loop() {
   }
   delay(500);
   comptLoop = (comptLoop + 1) % 30;
+  
+  
 #endif
 
   if(transferReady == HIGH){
@@ -189,6 +196,7 @@ void loop() {
     batteryVoltage = i2cReading();
 
 #if debug
+
     Serial.println("Fin du tranfert");
     Serial.print("Pluie 24h : ");
     Serial.println(rain24h);
@@ -213,7 +221,7 @@ void loop() {
     // send the data to Adafruit IO
     sendDataAdafruitIO();
   }
-  delay(30000);
+  //delay(30000);
 
 #if !debug
   // if the Feather doesn't give the info to be ready

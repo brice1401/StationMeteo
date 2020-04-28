@@ -18,8 +18,6 @@
 
 // pour le debuggage
 byte loopLaunch = 1;
-unsigned long UnixTimeLastRadioS;
-int SecondBetweenSend = 1;
 unsigned long LastDisplay;
 int comptLoop = 0;
 #define debug true
@@ -37,9 +35,7 @@ WeatherStation maStationMeteo;
 
 // Information about time and date
 // Unix time are in minutes and not in seconds
-unsigned long UnixTime;
 unsigned long UnixTimeLastRadio;
-unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
 int MinuteBetweenSend = 10; // number of minute between two sensor acquisition
 
@@ -211,7 +207,6 @@ void setup()
   // init of temp variable
   instant = rtc.now();
   UnixTimeLastRadio = getUnixTimeM(instant);
-  UnixTimeLastRadioS = getUnixTimeS(instant);
 
   digitalWrite(LED_BUILTIN, LOW); // switch off the led once the setup is finish
   Serial.println("Fin du setup");
@@ -390,8 +385,6 @@ void loop(){
 
   Serial.println("It's time to do the measures !");
   
-  //if(DurationLastSendS(UnixTimeLastRadioS, instant) >= 15){ 
-    //pour mesure toutes les 10s
     //the last message was send MinuteBetweenSend minutes ago
     //it's time to measure and to send a new message
 
@@ -427,7 +420,6 @@ void loop(){
 #endif
 
     UnixTimeLastRadio = getUnixTimeM(instant); //change moment of last message
-    // UnixTimeLastRadioS = getUnixTimeS(instant); //change moment of last message
 
 
     // Sending the data through the LoRa radio
@@ -489,12 +481,3 @@ void blinkLed13(){
     delay(100);
   }
 }
-
-
-/*
-extern "C" char *sbrk(int i);
-
-int FreeRam () {
-  char stack_dummy = 0;
-  return &stack_dummy - sbrk(0);
-}*/

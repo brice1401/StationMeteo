@@ -46,9 +46,7 @@ RTC_PCF8523 rtc;
 
 // Information about time and date
 // Unix time are in minutes and not in seconds
-unsigned long UnixTime;
 unsigned long UnixTimeLastRadio;
-unsigned long UnixTimeLastWakeUp;
 DateTime instant; //current state of the rtc
 int MinuteBetweenSend = 10; // number of minute between two sensor acquisition
 bool waitMessage = true;
@@ -74,6 +72,7 @@ TwoWire myWire(&sercom1, pinSDA, pinSCL);
 volatile byte transferDone;
 volatile uint8_t sending = 0; // to keep in memory the number of group send by I2C
 const uint8_t numberSending = 8;
+
 
 // Union to convert float to byte
 union floatToBytes {
@@ -178,6 +177,10 @@ void setup() {
   // for the transfer of data
   transferDone = 0;
 
+  // init of temp variable
+  instant = rtc.now();
+  UnixTimeLastRadio = getUnixTimeM(instant);
+
   pinMode(LED_BUILTIN, OUTPUT);
 }
 
@@ -186,7 +189,7 @@ void loop() {
   // check for time
   instant = rtc.now();
 
-  if (((getUnixTimeM(instant) % MinuteBetweenSend) == MinuteBetweenSend - 1)  || (waitMessage)) {
+  if ((DurationLastSend(UnixTimeLastRadio, instant) >= (MinuteBetweenSend - 1))  || (waitMessage)) {
     
     // the radio is waiting for a message 1 min before it will be send
     waitMessage = true;
@@ -238,7 +241,10 @@ void loop() {
         rf95.waitPacketSent();
         Serial.println("Sent a reply");
 
+        // change the instant of last sent
+        UnixTimeLastRadio = getUnixTimeM(instant);
         waitMessage = false;
+        
         // a message was received, it's time to put the radio module in sleep mode
         rf95.sleep();
 
@@ -255,6 +261,26 @@ void loop() {
 #if debug
         // display the data inside the WeatherStation object
         displayDataSerial(maStationMeteo, instant);
+
+        Serial.println("*******************************************************");
+        Serial.println("Data send to the ESP");
+        Serial.print("Rain 24h : ");
+        Serial.println(rain24h.value);
+        Serial.print("Rain 27d : ");
+        Serial.println(rain7d.value);
+        Serial.print("Wind direction : ");
+        Serial.println(windDir.value);
+        Serial.print("Wind Speed : ");
+        Serial.println(windSpeed.value);
+        Serial.print("Temperature : ");
+        Serial.println(temperature.value);
+        Serial.print("Humidity : ");
+        Serial.println(humidity.value);
+        Serial.print("Pression : ");
+        Serial.println(pressure.value);
+        Serial.print("Voltage battery : ");
+        Serial.println(batteryVoltage.value);
+        Serial.println("");
 #endif
 
         // indicate to the ESP8266 that the data are ready to transfer
@@ -262,12 +288,12 @@ void loop() {
 
         delay(5000);
 
-       /*
-       Serial.println("Sending data to the ESP8266");
+       
+        Serial.println("Sending data to the ESP8266");
         while (!transferDone) {
           delay(10);
         }
-        */
+        
         Serial.println("Transfer done");
         transferDone = 0; // as the transfer is done, put the value to 0 for the next
         digitalWrite(pinWakeESP, LOW); // authorise the ESP to sleep
@@ -278,6 +304,7 @@ void loop() {
 
 // sleeping Mode
 #if !debug
+
   Serial.println("Put the feather to sleep");
   digitalWrite(LED_BUILTIN, LOW);
   // put the feather to sleep for 8 sec
@@ -287,6 +314,7 @@ void loop() {
 #endif
   Serial.println("The feaher has woken up");
   digitalWrite(LED_BUILTIN, HIGH);
+  
 #endif
 
 }
