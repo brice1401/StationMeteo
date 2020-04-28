@@ -36,6 +36,12 @@ floatToBytes batteryVoltage;
 
 void setup() {
   Serial.begin(115200);
+  
+  while (!Serial) {
+    // wait for serial bus to be active (M0)
+    delay(1);
+  }
+  
   Serial.println("A table");
   myWire.begin(ADDRESS_FEATHER);
   // Assign pins 13 & 11 to SERCOM functionality
@@ -44,10 +50,6 @@ void setup() {
   
   myWire.onRequest(receiveEvent);
 
-  if (! rtc.begin()) {
-    Serial.println("Couldn't find RTC");
-    while (1){};
-  }
 
 
   // prepare the data to the ESP8266
@@ -71,16 +73,13 @@ void setup() {
 
 void loop() {
 
-  DateTime now = rtc.now();
-
-  
   if(transferDone){
     Serial.println("Success, the transfer is done");
+    transferDone = 0;
   }
 
   delay(2000);
-
-  
+  Serial.println(transferDone);
 }
 
 // function that executes whenever data is received from master
