@@ -42,16 +42,13 @@ void setup() {
     // wait for serial bus to be active (M0)
     delay(1);
   }
-  
-  Serial.println("A table");
   myWire.begin(ADDRESS_FEATHER);
   // Assign pins 13 & 11 to SERCOM functionality
   pinPeripheral(pinSDA, PIO_SERCOM);
   pinPeripheral(pinSCL, PIO_SERCOM);
   
-  myWire.onRequest(receiveEvent);
-
-
+  myWire.onRequest(requestEvent);
+  myWire.onReceive(receiveEvent);
 
   // prepare the data to the ESP8266
   rain24h.value = 2.4;
@@ -65,7 +62,8 @@ void setup() {
 
   pinMode(pinReady, OUTPUT);
   digitalWrite(pinReady, LOW);
-  
+
+  Serial.println("End of setup");
 }
  
 
@@ -74,21 +72,16 @@ void loop() {
   // ready to do the transfer
   digitalWrite(pinReady, HIGH);
 
-  if(transferDone){
-    Serial.println("Success, the transfer is done");
-    transferDone = 0;
-  }
+  
+  Serial.println("Wait 10s for the next transfert");
+  delay(10000);
 
-  while(!transferDone){
-    delay(10);
-  }
-  Serial.println("Transfert done");
 }
 
 // function that executes whenever data is received from master
 // this function is registered as an event, see setup()
 
-void receiveEvent() {
+void requestEvent() {
   // handler for the second i2c (myWire)
   // execute the code to send data to the esp8266
 
@@ -116,11 +109,20 @@ void receiveEvent() {
       break;
     case 7:
       myWire.write(batteryVoltage.buffer, 4);
-      transferDone = 1; //the transfer is completed
       break;
   }
-
   sending = (sending + 1) % numberSending;
+}
+
+void receiveEvent(int numBytes){
+  // handler for a receive event from the master (ESP8266)
+  digitalWrite(pinReady, LOW);
+  if(myWire.available() > 0){
+    byte receiveByte = myWire.read();
+    if(receiveByte == 0xAA){
+      digitalWrite(pinReady, LOW);
+    }
+  }
 }
 
 // Attach the interrupt handler to the SERCOM

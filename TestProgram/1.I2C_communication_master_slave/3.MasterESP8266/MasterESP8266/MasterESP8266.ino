@@ -7,7 +7,9 @@
 #define ADDRESS_FEATHER (0x50) // address of the slave
 uint8_t comptLoop = 0;
 #define pinReady 12
-int readyState = 0;
+byte endOfTransfert = 0xAA;
+
+uint8_t sleepingTime = 60; //sleeping time in s
   
 // def of unions to convert the received byte to float
 float rain24h;
@@ -23,20 +25,17 @@ float batteryVoltage;
 void setup() {
   // open the serial communication
   Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(pinReady, INPUT);
+
+  digitalWrite(LED_BUILTIN, LOW); // turn on the LED
 
   // open the i2c bus as the master
   Wire.begin();
 
-  pinMode(pinReady, INPUT);
-
   Serial.println("Setup initial done !");
-}
 
-void loop() {
-
-  readyState = digitalRead(pinReady);
-
-  if(readyState == HIGH){
+  if(digitalRead(pinReady) == HIGH){
     // Demand the data to the feather
     // rain on 24h
     Wire.requestFrom(ADDRESS_FEATHER, 4);
@@ -80,21 +79,37 @@ void loop() {
     Serial.println(pressure2Forecast(pressure));
     Serial.print("Voltage de la batterie : ");
     Serial.println(batteryVoltage);
-    
+
+    // tell the feather that the transfer is finished
+    Wire.beginTransmission(ADDRESS_FEATHER);
+    Wire.write(endOfTransfert);
+    Wire.endTransmission();
+  
+    while(digitalRead(pinReady) == HIGH){
+      delay(10);
+    }
   }
 
-  delay(10000);
-
-
-   rain24h = 0;
-   rain7d = 0;
-   windDir = 0;
-   windSpeed = 0;
-   temperature = 0;
-   humidity = 0;
-   pressure = 0;
-   batteryVoltage = 0;
   
+  rain24h = 0;
+  rain7d = 0;
+  windDir = 0;
+  windSpeed = 0;
+  temperature = 0;
+  humidity = 0;
+  pressure = 0;
+  batteryVoltage = 0;
+
+  // if the Feather doesn't give the info to be ready
+  // or the data are send
+  // put to sleep for sleepingTime seconds
+  digitalWrite(LED_BUILTIN, HIGH); // turn off the led
+  Serial.println("Going to sleep");
+  ESP.deepSleep(sleepingTime * 1000000); // the time here is in micro-seconds
+}
+
+void loop() {
+
 }
 
 float i2cReading(){
