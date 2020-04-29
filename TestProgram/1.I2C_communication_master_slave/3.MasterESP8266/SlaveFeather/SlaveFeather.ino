@@ -17,6 +17,7 @@ RTC_PCF8523 rtc;
 int sending = 0;
 uint8_t transferDone = 0;
 uint8_t numberSending = 8;
+#define pinReady 12
 
 // Union to convert float to byte
 union floatToBytes {
@@ -62,19 +63,26 @@ void setup() {
   batteryVoltage.value = 3.82;
   pressure.value = 1010;
 
+  pinMode(pinReady, OUTPUT);
+  digitalWrite(pinReady, LOW);
   
 }
  
 
 void loop() {
 
+  // ready to do the transfer
+  digitalWrite(pinReady, HIGH);
+
   if(transferDone){
     Serial.println("Success, the transfer is done");
     transferDone = 0;
   }
 
-  delay(2000);
-  Serial.println(transferDone);
+  while(!transferDone){
+    delay(10);
+  }
+  Serial.println("Transfert done");
 }
 
 // function that executes whenever data is received from master

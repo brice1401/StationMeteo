@@ -6,11 +6,8 @@
 
 #define ADDRESS_FEATHER (0x50) // address of the slave
 uint8_t comptLoop = 0;
-
-
-
-
-
+#define pinReady 12
+int readyState = 0;
   
 // def of unions to convert the received byte to float
 float rain24h;
@@ -30,12 +27,16 @@ void setup() {
   // open the i2c bus as the master
   Wire.begin();
 
+  pinMode(pinReady, INPUT);
+
   Serial.println("Setup initial done !");
 }
 
 void loop() {
 
-  if(comptLoop ==0){
+  readyState = digitalRead(pinReady);
+
+  if(readyState == HIGH){
     // Demand the data to the feather
     // rain on 24h
     Wire.requestFrom(ADDRESS_FEATHER, 4);
@@ -80,11 +81,10 @@ void loop() {
     Serial.print("Voltage de la batterie : ");
     Serial.println(batteryVoltage);
     
-    comptLoop = comptLoop+1;
   }
 
   delay(10000);
-  comptLoop = 0;
+
 
    rain24h = 0;
    rain7d = 0;
