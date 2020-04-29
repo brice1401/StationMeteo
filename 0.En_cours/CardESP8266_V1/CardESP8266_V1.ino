@@ -156,6 +156,7 @@ void setup() {
 
     // send the data to Adafruit IO
     sendDataAdafruitIO();
+    delay(3000); //3sec of delay to avoid multi sent
   }
   //delay(30000);
 

@@ -288,7 +288,15 @@ void loop() {
 
         Serial.println("Sending data to the ESP8266");
 
-        Serial.println(transferDone);
+        uint8_t comptLoop2 = 0;
+        while(transferDone == 0){
+          delay(10);
+
+          if(comptLoop2 == 0){
+            Serial.println("Transfert en cours");
+          }
+          comptLoop2 = (comptLoop2 + 1) % 10;
+        }
 
         digitalWrite(pinWakeESP, LOW); // authorise the ESP to sleep
         Serial.println("Transfer done");
@@ -316,8 +324,6 @@ void loop() {
 #endif
 
 }
-
-
 
 int averageAnalogRead(int pinToRead, byte numberOfReadings) {
   // function return the average value read from an analog input
