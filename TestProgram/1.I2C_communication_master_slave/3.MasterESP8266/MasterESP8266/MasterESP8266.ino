@@ -37,30 +37,7 @@ void setup() {
 
   if(digitalRead(pinReady) == HIGH){
     // Demand the data to the feather
-    // rain on 24h
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    rain24h = i2cReading();
-    //rain on 7d
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    rain7d = i2cReading();
-    // wind direction
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    windDir = i2cReading();
-    // wind speed
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    windSpeed = i2cReading();
-    // temperature
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    temperature = i2cReading();
-    // humidity
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    humidity = i2cReading();
-    // pression atm
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    pressure = i2cReading();
-    // voltage battery sensor
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    batteryVoltage = i2cReading();
+    askingData();
   
     Serial.println("Fin du tranfert");
     Serial.print("Pluie 24h : ");
@@ -80,14 +57,12 @@ void setup() {
     Serial.print("Voltage de la batterie : ");
     Serial.println(batteryVoltage);
 
+
     // tell the feather that the transfer is finished
     Wire.beginTransmission(ADDRESS_FEATHER);
     Wire.write(endOfTransfert);
     Wire.endTransmission();
   
-    while(digitalRead(pinReady) == HIGH){
-      delay(10);
-    }
   }
 
   
@@ -157,4 +132,31 @@ String pressure2Forecast(float pressure){
  if(pressure >= 1020){
       return("w:day-sunny");
  }
+}
+
+void askingData(){
+    // rain on 24h
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    rain24h = i2cReading();
+    //rain on 7d
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    rain7d = i2cReading();
+    // wind direction
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    windDir = i2cReading();
+    // wind speed
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    windSpeed = i2cReading();
+    // temperature
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    temperature = i2cReading();
+    // humidity
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    humidity = i2cReading();
+    // pression atm
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    pressure = i2cReading();
+    // voltage battery sensor
+    Wire.requestFrom(ADDRESS_FEATHER, 4);
+    batteryVoltage = i2cReading();
 }
