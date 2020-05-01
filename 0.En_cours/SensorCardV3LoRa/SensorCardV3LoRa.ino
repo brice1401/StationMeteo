@@ -166,7 +166,8 @@ void setup()
   
   if(errorSensor == 1){
     // Stop the programme
-    Serial.println("There is (at least) one error, so the program has to stop");
+    Serial.println("There is (at least) one error with the sensor");
+    Serial.println("The program has to stop");
     while(1);
   }
   
@@ -209,6 +210,7 @@ void setup()
   UnixTimeLastRadio = getUnixTimeM(instant);
 
   digitalWrite(LED_BUILTIN, LOW); // switch off the led once the setup is finish
+  blinkLED(20,2);
   Serial.println("Fin du setup");
 }
 
@@ -361,7 +363,6 @@ void loop(){
     // done this only one time
     // to show that the loop is launch
     Serial.println("The loop is launched");
-    blinkLed13();
     loopLaunch = 0;
   }
 
@@ -471,13 +472,14 @@ void loop(){
 #endif
 }
 
-void blinkLed13(){
-  //blink the LED on pin 13 of the board
-
-  for(int k=0; k<10; k++){
-    digitalWrite(LED_BUILTIN, HIGH); //switch on the led
-    delay(100);
-    digitalWrite(LED_BUILTIN, LOW);//switch of the led
-    delay(100);
+void blinkLED(uint8_t nbBlink, uint8_t duration){
+  // duration en seconde
+  uint8_t delayDuration = uint8_t(duration * 1000 / (2 * nbBlink));
+  
+  for(int j=0; j<nbBlink; j++){
+    digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
+    delay(delayDuration);
+    digitalWrite(LED_BUILTIN, LOW); // turn on the LED
+    delay(delayDuration);
   }
 }

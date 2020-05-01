@@ -52,39 +52,28 @@ void setup() {
   
   digitalWrite(LED_BUILTIN, LOW); // turn on the LED
 
-  // start the I2C bus
-  Wire.begin();
-
-  // Connect to Adafruit IO
-  io.connect();
- 
-  // wait for a connection
-  while(io.status() < AIO_CONNECTED) 
-  {
-    Serial.print(".");
-    delay(500);
-  }
-
-  Serial.println("Setup initial done !");
-
-
-  #if debug
-  if(comptLoop == 0){
-    Serial.println("En attente du signal");
-  }
-  delay(500);
-  comptLoop = (comptLoop + 1) % 30;
-  
-  
-  #endif
-  Serial.print("Etat du pin ready : ");
-  Serial.println(digitalRead(pinReady) == HIGH);
   if(digitalRead(pinReady) == HIGH){
+
+    // start the I2C bus
+    Wire.begin();
+  
+    // Connect to Adafruit IO
+    io.connect();
+   
+    // wait for a connection
+    while(io.status() < AIO_CONNECTED) 
+    {
+      Serial.print(".");
+      delay(500);
+    }
+  
+    Serial.println("Setup initial done !");
+  
     // the feather has sent the signal
 
-  #if debug  
-  Serial.println("Début du transfert de données");
-  #endif
+    #if debug  
+    Serial.println("Début du transfert de données");
+    #endif
 
     io.run(); // run the io library
   
@@ -124,6 +113,7 @@ void setup() {
   // or the data are send
   // put to sleep for 1 min
   digitalWrite(LED_BUILTIN, HIGH); // turn off the led
+  Serial.println("");
   Serial.println("Going to sleep");
   ESP.deepSleep(sleepingTime * 1000000); // the time here is in micro-seconds
 

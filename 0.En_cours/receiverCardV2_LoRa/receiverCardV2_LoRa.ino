@@ -8,8 +8,8 @@
 // for debugging
 #define debug true
 uint8_t comptLoop = 0;
-#define SDdeMerde true 
-#define sommeil false
+#define SDdeMerde false 
+#define sommeil true
 
 #include <RH_RF95.h>
 #include <SPI.h>
@@ -184,6 +184,7 @@ void setup() {
   instant = rtc.now();
   UnixTimeLastRadio = getUnixTimeM(instant);
 
+  blinkLED(20,2);
   Serial.println("End of setup");
 }
 
@@ -214,9 +215,8 @@ void loop() {
       if (rf95.recv(buf, &len)) {
         //a message is received
         RH_RF95::printBuffer("Received: ", buf, len);
+        blinkLED(20,2);
         Serial.println("**************************************************************************************");
-        Serial.print("Got: ");
-        Serial.println((char*)buf);
         Serial.print("RSSI: ");
         Serial.println(rf95.lastRssi(), DEC);
 
@@ -316,6 +316,9 @@ void loop() {
 #if sommeil
 
   Serial.println("Put the feather to sleep");
+  blinkLED(10,1);
+  delay(1000);
+  blinkLED(10,1);
   digitalWrite(LED_BUILTIN, LOW);
   // put the feather to sleep for 8 sec
   int sleepMS = Watchdog.sleep(8000);
@@ -326,7 +329,6 @@ void loop() {
   #endif
   
   Serial.println("The feaher has woken up");
-  digitalWrite(LED_BUILTIN, HIGH);
   
 #endif
 
@@ -408,5 +410,17 @@ extern "C" {
 
   void SERCOM1_Handler(void) {
     myWire.onService();
+  }
+}
+
+void blinkLED(uint8_t nbBlink, uint8_t duration){
+  // duration en seconde
+  uint8_t delayDuration = uint8_t(duration * 1000 / (2 * nbBlink));
+  
+  for(int j=0; j<nbBlink; j++){
+    digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
+    delay(delayDuration);
+    digitalWrite(LED_BUILTIN, LOW); // turn on the LED
+    delay(delayDuration);
   }
 }
