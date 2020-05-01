@@ -392,7 +392,7 @@ void loop(){
     maStationMeteo.setWindSpeed(measureWindSpeed());
     
     // measure the direction of the wind
-    maStationMeteo.setWindDir(measureWindDir(100)); //measure direction of wind using 127 point of measure
+    maStationMeteo.setWindDir(measureWindDir(50)); //measure direction of wind using 127 point of measure
     
     //measure T° and %H with DHT22
     maStationMeteo.setTempDHT(dht.readTemperature());
@@ -400,7 +400,7 @@ void loop(){
     
     //measure pressure, temp et altitude with BMP280
     maStationMeteo.setTempBMP(bmp.readTemperature());
-    maStationMeteo.setPressure(bmp.readPressure()/100); // pressure in hPa
+    maStationMeteo.setPressure((bmp.readPressure()/100) + 22); // pressure in hPa
     
     //measure voltage of the battery
     maStationMeteo.setBatteryVoltage(measureBatteryVoltage());

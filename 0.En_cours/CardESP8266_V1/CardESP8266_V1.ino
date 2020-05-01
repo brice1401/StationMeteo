@@ -42,14 +42,6 @@ float batteryVoltage;
 // parameter for sleeping
 uint8_t sleepingTime = 30; // time for sleep in seconds
 
-void blinkLED(){
-  for(int j=0; j<10; j++){
-    digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
-    delay(100);
-    digitalWrite(LED_BUILTIN, LOW); // turn on the LED
-    delay(100);
-  }
-}
 
 void setup() {
 
@@ -124,7 +116,7 @@ void setup() {
 
     // send the data to Adafruit IO
     sendDataAdafruitIO();
-    delay(3000); //3sec of delay to avoid multi sent
+    blinkLED(20, 2);
   }
 
 
@@ -137,8 +129,12 @@ void setup() {
 
 }
 
+void loop() {
+  // no loop because the code is only launch once
+  // once the esp quit sleeping, it reset
+}
+
 void sendDataAdafruitIO(){
-  
   // send all the data to the adafruit IO feed
     
   rain24hFeed->save(rain24h);
@@ -149,7 +145,6 @@ void sendDataAdafruitIO(){
   humidityFeed->save(humidity);
   forecastFeed->save(pressure2Forecast(pressure));
   batteryStationFeed->save(batteryVoltage);
-
 }
 
 String pressure2Forecast(float pressure){
@@ -157,31 +152,47 @@ String pressure2Forecast(float pressure){
   
   if (pressure<1006){
     return("w:rain");
- }
- if((pressure < 1013) && (pressure >= 1006)){
+  }
+  if((pressure < 1013) && (pressure >= 1006)){
       return("w:day-rain");
- }
- if((pressure < 1020) && (pressure >= 1013)){
+  }
+  if((pressure < 1020) && (pressure >= 1013)){
       return("w:day-sunny-overcast");
- }
- if(pressure >= 1020){
+  }
+  if(pressure >= 1020){
       return("w:day-sunny");
- }
+  }
 }
 
 String windDirAngle2Direction(float windDir){
   // set the string value for the icon for temperature in the adafruitIO
-  int angle =  windDir;
-  String iconName = "w:wind__from-";
   
-  angle = (angle + 180) % 360;
+  int angle = int(windDir);
+  uint8_t angleAdafruit; //the angle for the adafruit icon
+
+  uint8_t arrayValue[] = {0, 23, 45, 68, 90, 113, 135, 158, 180, 203, 225, 248, 270, 293, 313, 336, 360};
+  uint8_t nbValue = sizeof(arrayValue);
+  uint8_t mini = 360;
+
+  for(int j=0; j<nbValue; j++){
+    int diff = arrayValue[j] - angle;
+    diff = abs(diff);
+    if(diff < mini){
+      angleAdafruit = angle;
+      mini = diff;
+    }
+  }
+
+  angleAdafruit = (angleAdafruit + 180) % 360;
+  
+  String iconName = "w:wind__from-";
   iconName = iconName + String(angle) + "-deg";
   return(iconName);
 }
 
-float i2cReading(){
-  
+float i2cReading(){  
 // Union to convert byte to float
+
   union byte2Float {
     byte buffer[4];
     float value;
@@ -194,58 +205,62 @@ float i2cReading(){
     conversion.buffer[j] = c;
     j += 1;
   }
-
-#if debug
-  Serial.print("Reception de : ");
-  Serial.println(conversion.value);
-#endif
   
   //return the float value of the union
   return(conversion.value);
 }
 
-void loop() {
-  // no loop because the code is only launch once
-  // once the esp quit sleeping, it reset
-}
 
 void askingData(){
+  // ask the data to the feather
     
-    // rain on 24h
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    rain24h = i2cReading();
-    delay(200);
-    //rain on 7d
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    rain7d = i2cReading();
-    delay(200);
-    // wind direction
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    windDir = i2cReading();
-    delay(200);
-    // wind speed
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    windSpeed = i2cReading();
-    delay(200);
-    // temperature
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    temperature = i2cReading();
-    delay(200);
-    // humidity
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    humidity = i2cReading();
-    delay(200);
-    // pression atm
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    pressure = i2cReading();
-    delay(200);
-    // voltage battery sensor
-    Wire.requestFrom(ADDRESS_FEATHER, 4);
-    batteryVoltage = i2cReading();
-    delay(200);
+  // rain on 24h
+  Wire.requestFrom(ADDRESS_FEATHER, 4);
+  rain24h = i2cReading();
+  delay(200);
+  //rain on 7d
+  Wire.requestFrom(ADDRESS_FEATHER, 4);
+  rain7d = i2cReading();
+  delay(200);
+  // wind direction
+  Wire.requestFrom(ADDRESS_FEATHER, 4);
+  windDir = i2cReading();
+  delay(200);
+  // wind speed
+  Wire.requestFrom(ADDRESS_FEATHER, 4);
+  windSpeed = i2cReading();
+  delay(200);
+  // temperature
+  Wire.requestFrom(ADDRESS_FEATHER, 4);
+  temperature = i2cReading();
+  delay(200);
+  // humidity
+  Wire.requestFrom(ADDRESS_FEATHER, 4);
+  humidity = i2cReading();
+  delay(200);
+  // pression atm
+  Wire.requestFrom(ADDRESS_FEATHER, 4);
+  pressure = i2cReading();
+  delay(200);
+  // voltage battery sensor
+  Wire.requestFrom(ADDRESS_FEATHER, 4);
+  batteryVoltage = i2cReading();
+  delay(200);
+  
+  // tell the feather that the transfer is finished
+  Wire.beginTransmission(ADDRESS_FEATHER);
+  Wire.write(endOfTransfert);
+  Wire.endTransmission();
+}
 
-    // tell the feather that the transfer is finished
-    Wire.beginTransmission(ADDRESS_FEATHER);
-    Wire.write(endOfTransfert);
-    Wire.endTransmission();
+void blinkLED(uint8_t nbBlink, uint8_t duration){
+  // duration en seconde
+  uint8_t delayDuration = uint8_t(duration * 1000 / (2 * nbBlink));
+  
+  for(int j=0; j<nbBlink; j++){
+    digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
+    delay(delayDuration);
+    digitalWrite(LED_BUILTIN, LOW); // turn on the LED
+    delay(delayDuration);
+  }
 }

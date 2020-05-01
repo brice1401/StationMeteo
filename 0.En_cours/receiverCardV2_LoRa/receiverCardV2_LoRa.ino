@@ -324,6 +324,7 @@ void loop() {
   // reattach the USB connexion
   USBDevice.attach();
   #endif
+  
   Serial.println("The feaher has woken up");
   digitalWrite(LED_BUILTIN, HIGH);
   
