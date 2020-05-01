@@ -7,7 +7,7 @@
 #define ADDRESS_FEATHER (0x50) // address of the slave
 uint8_t comptLoop = 0;
 #define pinReady 12
-byte endOfTransfert = 0xAA;
+byte endOfTransfert = 0xFF;
 
 uint8_t sleepingTime = 60; //sleeping time in s
   

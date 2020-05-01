@@ -18,7 +18,6 @@ int sending = 0;
 uint8_t transferDone = 0;
 uint8_t numberSending = 8;
 #define pinReady 12
-#define pinReadyControl 6
 
 // Union to convert float to byte
 union floatToBytes {
@@ -63,7 +62,6 @@ void setup() {
 
   pinMode(pinReady, OUTPUT);
   digitalWrite(pinReady, LOW);
-  pinMode(pinReadyControl, INPUT);
   
   Serial.println("End of setup");
 }
@@ -75,9 +73,16 @@ void loop() {
   digitalWrite(pinReady, LOW);
 
   digitalWrite(pinReady, HIGH);
+  Serial.println("Ready for transfert");
 
+  uint8_t comptLoop2 = 0;
   while(transferDone == 0){
-    delay(1);
+    delay(10);
+
+    if(comptLoop2 == 0){
+      Serial.println("Transfert en cours");
+    }
+    comptLoop2 = (comptLoop2 + 1) % 100;
   }
 
   transferDone = 0; //init the value
@@ -127,8 +132,8 @@ void receiveEvent(int numBytes){
   // handler for a receive event from the master (ESP8266)
     
   if(myWire.available() > 0){
-    byte receiveByte = myWire.read();
-    if(receiveByte == 0xAA){
+    uint8_t receiveByte = myWire.available();
+    if(receiveByte == 5){
       Serial.println("The transfer is done");
       transferDone = 1;      
     }

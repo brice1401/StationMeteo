@@ -9,6 +9,7 @@
 #define debug true
 uint8_t comptLoop = 0;
 #define SDdeMerde true 
+#define sommeil false
 
 #include <RH_RF95.h>
 #include <SPI.h>
@@ -68,7 +69,7 @@ TwoWire myWire(&sercom1, pinSDA, pinSCL);
 #define ADDRESS_FEATHER (0x50) // address of the feather as slave
 
 // parameter for the tranfer of data
-#define pinWakeESP  12 // put at high to say to the ESP that the feather is ready
+#define pinReady  12 // put at high to say to the ESP that the feather is ready
 volatile byte transferDone;
 volatile uint8_t sending = 0; // to keep in memory the number of group send by I2C
 const uint8_t numberSending = 8;
@@ -93,6 +94,7 @@ floatToBytes batteryVoltage;
 void setup() {
 
   Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
 
   while (!Serial) {
     // wait for serial bus to be active (M0)
@@ -168,11 +170,12 @@ void setup() {
   pinPeripheral(pinSDA, PIO_SERCOM);
   pinPeripheral(pinSCL, PIO_SERCOM);
 
-  myWire.onRequest(receiveEvent); // attach the function "receiveEvent if a request is received
-
+  // attach the function "requestEvent if a request is received
+  myWire.onRequest(requestEvent); // attach the function "requestEvent if a request is received
+  myWire.onReceive(receiveEvent);
   // to wake up the esp
-  pinMode(pinWakeESP, OUTPUT);
-  digitalWrite(pinWakeESP, LOW);
+  pinMode(pinReady, OUTPUT);
+  digitalWrite(pinReady, LOW);
 
   // for the transfer of data
   transferDone = 0;
@@ -181,7 +184,7 @@ void setup() {
   instant = rtc.now();
   UnixTimeLastRadio = getUnixTimeM(instant);
 
-  pinMode(LED_BUILTIN, OUTPUT);
+  Serial.println("End of setup");
 }
 
 void loop() {
@@ -284,7 +287,8 @@ void loop() {
 #endif
 
         // indicate to the ESP8266 that the data are ready to transfer
-        digitalWrite(pinWakeESP, HIGH);
+        digitalWrite(pinReady, LOW);
+        digitalWrite(pinReady, HIGH);
 
         Serial.println("Sending data to the ESP8266");
 
@@ -293,31 +297,33 @@ void loop() {
           delay(10);
 
           if(comptLoop2 == 0){
-            Serial.println("Transfert en cours");
+            Serial.println("Waiting for transfert");
           }
-          comptLoop2 = (comptLoop2 + 1) % 10;
+          comptLoop2 = (comptLoop2 + 1) % 200;
         }
 
-        digitalWrite(pinWakeESP, LOW); // authorise the ESP to sleep
+        digitalWrite(pinReady, LOW); // authorise the ESP to sleep
         Serial.println("Transfer done");
-        transferDone = 0; // as the transfer is done, put the value to 0 for the next
+        transferDone = 0; // as the transfer is done, wait for next message
         delay(500);
-        
       }
     }
   }
 
 
 // sleeping Mode
-#if !debug
+// the message is received or it's not time to received one
+#if sommeil
 
   Serial.println("Put the feather to sleep");
   digitalWrite(LED_BUILTIN, LOW);
   // put the feather to sleep for 8 sec
   int sleepMS = Watchdog.sleep(8000);
-#if defined(USBCON) && !defined(USE_TINYUSB)
+  
+  #if defined(USBCON) && !defined(USE_TINYUSB)
+  // reattach the USB connexion
   USBDevice.attach();
-#endif
+  #endif
   Serial.println("The feaher has woken up");
   digitalWrite(LED_BUILTIN, HIGH);
   
@@ -351,7 +357,7 @@ float measureBatteryVoltage() {
   return (measuredvbat);
 }
 
-void receiveEvent() {
+void requestEvent() {
   // handler for the second i2c (myWire)
   // execute the code to send data to the esp8266
 
@@ -379,11 +385,20 @@ void receiveEvent() {
       break;
     case 7:
       myWire.write(batteryVoltage.buffer, 4);
-      transferDone = 1; //the transfer is completed
       break;
   }
-
   sending = (sending + 1) % numberSending;
+}
+
+void receiveEvent(int numBytes){
+  // handler for a receive event from the master (ESP8266)
+  if(myWire.available() > 0){
+    byte receiveByte = myWire.read();
+    if(receiveByte == 0xFF){
+      Serial.println("The transfer is done");
+      transferDone = 1;      
+    }
+  }
 }
 
 // Attach the interrupt handler to the SERCOM
