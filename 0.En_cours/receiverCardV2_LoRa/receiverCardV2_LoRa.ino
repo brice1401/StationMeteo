@@ -20,6 +20,7 @@ uint8_t comptLoop = 0;
 #include "wiring_private.h"
 #include <SD.h>
 #include <Adafruit_SleepyDog.h>
+#include "Adafruit_LiquidCrystal.h"
 
 
 // define the radio parameter
@@ -91,6 +92,9 @@ floatToBytes humidity;
 floatToBytes pressure;
 floatToBytes batteryVoltage;
 
+// parameter for the LCD screen
+Adafruit_LiquidCrystal lcd(0);
+
 void setup() {
 
   Serial.begin(115200);
@@ -126,6 +130,11 @@ void setup() {
   delay(200);
 #endif
 
+
+  // init the LCD screen
+  lcd.begin(16, 2); // number of row and column
+
+  // if there is some error, stop here
   if (errorSetup) {
     Serial.println(F("Something wrong happened, please do the setup again"));
     while (1) {}
@@ -201,6 +210,7 @@ void loop() {
 #if debug
     if (comptLoop == 0){
       Serial.println("Waiting for a message");
+      lcdShowData("Waiting for a message", "");
     }
     comptLoop = (comptLoop + 1) % 50;
     delay(500);
@@ -264,26 +274,7 @@ void loop() {
 #if debug
         // display the data inside the WeatherStation object
         displayDataSerial(maStationMeteo, instant);
-
-        Serial.println("*******************************************************");
-        Serial.println("Data send to the ESP");
-        Serial.print("Rain 24h : ");
-        Serial.println(rain24h.value);
-        Serial.print("Rain 27d : ");
-        Serial.println(rain7d.value);
-        Serial.print("Wind direction : ");
-        Serial.println(windDir.value);
-        Serial.print("Wind Speed : ");
-        Serial.println(windSpeed.value);
-        Serial.print("Temperature : ");
-        Serial.println(temperature.value);
-        Serial.print("Humidity : ");
-        Serial.println(humidity.value);
-        Serial.print("Pression : ");
-        Serial.println(pressure.value);
-        Serial.print("Voltage battery : ");
-        Serial.println(batteryVoltage.value);
-        Serial.println("");
+        displayDataSent();
 #endif
 
         // indicate to the ESP8266 that the data are ready to transfer
@@ -298,12 +289,14 @@ void loop() {
 
           if(comptLoop2 == 0){
             Serial.println("Waiting for transfert");
+            lcdShowData("Waiting for", "transfert");
           }
           comptLoop2 = (comptLoop2 + 1) % 200;
         }
 
         digitalWrite(pinReady, LOW); // authorise the ESP to sleep
         Serial.println("Transfer done");
+        lcdShowData("Transfer done", "");
         transferDone = 0; // as the transfer is done, wait for next message
         delay(500);
       }
@@ -316,17 +309,16 @@ void loop() {
 #if sommeil
 
   Serial.println("Put the feather to sleep");
-  blinkLED(10,1);
-  delay(1000);
-  blinkLED(10,1);
+  blinkLED(20,1);
   digitalWrite(LED_BUILTIN, LOW);
+  lcdNoShow();
   // put the feather to sleep for 8 sec
-  int sleepMS = Watchdog.sleep(8000);
+  int sleepMS = Watchdog.sleep();
   
-  #if defined(USBCON) && !defined(USE_TINYUSB)
+#if defined(USBCON) && !defined(USE_TINYUSB)
   // reattach the USB connexion
   USBDevice.attach();
-  #endif
+#endif
   
   Serial.println("The feaher has woken up");
   
@@ -423,4 +415,48 @@ void blinkLED(uint8_t nbBlink, uint8_t duration){
     digitalWrite(LED_BUILTIN, LOW); // turn on the LED
     delay(delayDuration);
   }
+}
+
+void lcdShowData(String chaine0, String chaine1){
+  // this function show the chaine0 in the upper row
+  // and chaine1 in the lower row
+
+  lcd.clear(); // clear the display
+  lcd.setCursor(0, 0);
+  lcd.print(chaine0);
+  lcd.setCursor(0, 1);
+  lcd.print(chaine1);
+
+  lcd.setBacklight(HIGH);
+  lcd.display();
+}
+
+void lcdNoShow(){
+  // clear and switch of the screen
+
+  lcd.clear();
+  lcd.noDisplay();
+  lcd.setBacklight(LOW);
+}
+
+void displayDataSent(){
+  Serial.println("*******************************************************");
+  Serial.println("Data send to the ESP");
+  Serial.print("Rain 24h : ");
+  Serial.println(rain24h.value);
+  Serial.print("Rain 27d : ");
+  Serial.println(rain7d.value);
+  Serial.print("Wind direction : ");
+  Serial.println(windDir.value);
+  Serial.print("Wind Speed : ");
+  Serial.println(windSpeed.value);
+  Serial.print("Temperature : ");
+  Serial.println(temperature.value);
+  Serial.print("Humidity : ");
+  Serial.println(humidity.value);
+  Serial.print("Pression : ");
+  Serial.println(pressure.value);
+  Serial.print("Voltage battery : ");
+  Serial.println(batteryVoltage.value);
+  Serial.println("");
 }
