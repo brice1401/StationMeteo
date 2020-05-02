@@ -225,10 +225,19 @@ void loop() {
       if (rf95.recv(buf, &len)) {
         //a message is received
         RH_RF95::printBuffer("Received: ", buf, len);
-        blinkLED(20,2);
         Serial.println("**************************************************************************************");
         Serial.print("RSSI: ");
         Serial.println(rf95.lastRssi(), DEC);
+
+        // Send a reply back to the originator client
+        uint8_t response[] = "Thanks for the data";
+        rf95.send(response, sizeof(data));
+        rf95.waitPacketSent();
+        Serial.println("Sent a reply");
+        blinkLED(10,1);
+
+        // a message was received, it's time to put the radio module in sleep mode
+        rf95.sleep();
 
         // decryption of the message
         maStationMeteo.setRadioBufferReceive(buf);
@@ -248,19 +257,11 @@ void loop() {
         writeDataSD(Filename, maStationMeteo, instant);
 #endif
 
-        // Send a reply back to the originator client
-        uint8_t response[] = "Thanks for the data";
-        rf95.send(response, sizeof(data));
-        rf95.waitPacketSent();
-        Serial.println("Sent a reply");
-
+        
         // change the instant of last sent
         UnixTimeLastRadio = getUnixTimeM(instant);
         waitMessage = false;
         
-        // a message was received, it's time to put the radio module in sleep mode
-        rf95.sleep();
-
         // prepare the data to the ESP8266
         rain24h.value = maStationMeteo.getRain24h();
         rain7d.value = maStationMeteo.getRain7d();
