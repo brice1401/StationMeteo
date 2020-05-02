@@ -466,6 +466,13 @@ void loop(){
 #if defined(USBCON) && !defined(USE_TINYUSB)
   USBDevice.attach();
 #endif
+#if debug
+  while (!Serial) {
+    // wait for serial bus to be active (M0)
+    delay(1);
+  }
+#endif
+
 
   digitalWrite(LED_BUILTIN, HIGH);
   Serial.println("Feather woke up");

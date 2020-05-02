@@ -35,10 +35,21 @@ void loop() {
   lcdNoShow();
   int sleepMS = Watchdog.sleep();
 
+  unsigned long durationWakeUp = millis();
   digitalWrite(LED_BUILTIN, HIGH); // Show we're awake again
 
 #if defined(USBCON) && !defined(USE_TINYUSB)
   USBDevice.attach();
+#endif
+
+#if debug
+  while (!Serial) {
+    // wait for serial bus to be active (M0)
+    delay(1);
+  }
+  Serial.print("La reconnection dura : ");
+  Serial.print(millis() - durationWakeUp, DEC);
+  Serial.println(" ms");
 #endif
 
   Serial.print("I'm awake now! I slept for ");
@@ -47,6 +58,7 @@ void loop() {
   Serial.println();
 
   lcdShowData("Just wake up", "sleep for" + int(sleepMS/1000));
+  blinkLED(10,1);
 }
 
 void lcdShowData(String chaine0, String chaine1){

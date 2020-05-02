@@ -318,6 +318,8 @@ void loop() {
 #if defined(USBCON) && !defined(USE_TINYUSB)
   // reattach the USB connexion
   USBDevice.attach();
+#endif
+#if debug
   while (!Serial) {
     // wait for serial bus to be active (M0)
     delay(1);
