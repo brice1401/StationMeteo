@@ -8,7 +8,7 @@
 
 
 // parameter for the LCD screen
-Adafruit_LiquidCrystal lcd(0);
+Adafruit_LiquidCrystal lcd(0x27);
 
 
 void setup() {
