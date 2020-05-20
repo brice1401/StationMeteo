@@ -17,7 +17,6 @@ uint8_t comptLoop = 0;
 #include "displaySaveData.h"
 #include "RTClib.h"
 #include <Wire.h>
-#include "wiring_private.h"
 #include <SD.h>
 #include <Adafruit_SleepyDog.h>
 #include "Adafruit_LiquidCrystal.h"
@@ -62,19 +61,6 @@ float batteryReceiverVoltage;
 String Filename = "datalog.txt";
 
 
-// paramater for the second I2C bus
-// creation of a new I2C bus
-#define pinSDA 11// D11 : SDA
-#define pinSCL 13// D13 : SCL
-TwoWire myWire(&sercom1, pinSDA, pinSCL);
-#define ADDRESS_FEATHER (0x50) // address of the feather as slave
-
-// parameter for the tranfer of data
-#define pinReady  12 // put at high to say to the ESP that the feather is ready
-volatile byte transferDone;
-volatile uint8_t sending = 0; // to keep in memory the number of group send by I2C
-const uint8_t numberSending = 8;
-
 
 // Union to convert float to byte
 union floatToBytes {
@@ -82,15 +68,6 @@ union floatToBytes {
   float value;
 };
 
-// def of unions to convert the float to byte to send them to esp8266
-floatToBytes rain24h;
-floatToBytes rain7d;
-floatToBytes windDir;
-floatToBytes windSpeed;
-floatToBytes temperature;
-floatToBytes humidity;
-floatToBytes pressure;
-floatToBytes batteryVoltage;
 
 // parameter for the LCD screen
 Adafruit_LiquidCrystal lcd(0);
@@ -173,21 +150,6 @@ void setup() {
   // you can set transmitter powers from 5 to 23 dBm:
   rf95.setTxPower(23, false);
 
-  // init the second I2C bus
-  myWire.begin(ADDRESS_FEATHER);
-  // Assign pins 13 & 11 to SERCOM functionality
-  pinPeripheral(pinSDA, PIO_SERCOM);
-  pinPeripheral(pinSCL, PIO_SERCOM);
-
-  // attach the function "requestEvent if a request is received
-  myWire.onRequest(requestEvent); // attach the function "requestEvent if a request is received
-  myWire.onReceive(receiveEvent);
-  // to wake up the esp
-  pinMode(pinReady, OUTPUT);
-  digitalWrite(pinReady, LOW);
-
-  // for the transfer of data
-  transferDone = 0;
 
   // init of temp variable
   instant = rtc.now();
@@ -262,15 +224,6 @@ void loop() {
         UnixTimeLastRadio = getUnixTimeM(instant);
         waitMessage = false;
         
-        // prepare the data to the ESP8266
-        rain24h.value = maStationMeteo.getRain24h();
-        rain7d.value = maStationMeteo.getRain7d();
-        windDir.value = maStationMeteo.getWindDir();
-        windSpeed.value = maStationMeteo.getWindSpeed();
-        temperature.value = maStationMeteo._avgTemp;
-        humidity.value = maStationMeteo.getHumidity();
-        batteryVoltage.value = maStationMeteo.getBatteryVoltage();
-        pressure.value = maStationMeteo.getPressure();
 
 #if debug
         // display the data inside the WeatherStation object
@@ -278,28 +231,7 @@ void loop() {
         displayDataSent();
 #endif
 
-        // indicate to the ESP8266 that the data are ready to transfer
-        digitalWrite(pinReady, LOW);
-        digitalWrite(pinReady, HIGH);
 
-        Serial.println("Sending data to the ESP8266");
-
-        uint8_t comptLoop2 = 0;
-        while(transferDone == 0){
-          delay(10);
-
-          if(comptLoop2 == 0){
-            Serial.println("Waiting for transfert");
-            lcdShowData("Waiting for", "transfert");
-          }
-          comptLoop2 = (comptLoop2 + 1) % 200;
-        }
-
-        digitalWrite(pinReady, LOW); // authorise the ESP to sleep
-        Serial.println("Transfer done");
-        lcdShowData("Transfer done", "");
-        transferDone = 0; // as the transfer is done, wait for next message
-        delay(500);
       }
     }
   }
@@ -359,58 +291,6 @@ float measureBatteryVoltage() {
   return (measuredvbat);
 }
 
-void requestEvent() {
-  // handler for the second i2c (myWire)
-  // execute the code to send data to the esp8266
-
-  switch (sending) {
-    case 0:
-      myWire.write(rain24h.buffer, 4);
-      break;
-    case 1:
-      myWire.write(rain7d.buffer, 4);
-      break;
-    case 2:
-      myWire.write(windDir.buffer, 4);
-      break;
-    case 3:
-      myWire.write(windSpeed.buffer, 4);
-      break;
-    case 4:
-      myWire.write(temperature.buffer, 4);
-      break;
-    case 5:
-      myWire.write(humidity.buffer, 4);
-      break;
-    case 6:
-      myWire.write(pressure.buffer, 4);
-      break;
-    case 7:
-      myWire.write(batteryVoltage.buffer, 4);
-      break;
-  }
-  sending = (sending + 1) % numberSending;
-}
-
-void receiveEvent(int numBytes){
-  // handler for a receive event from the master (ESP8266)
-  if(myWire.available() > 0){
-    byte receiveByte = myWire.read();
-    if(receiveByte == 0xFF){
-      Serial.println("The transfer is done");
-      transferDone = 1;      
-    }
-  }
-}
-
-// Attach the interrupt handler to the SERCOM
-extern "C" {
-  void SERCOM1_Handler(void);
-
-  void SERCOM1_Handler(void) {
-    myWire.onService();
-  }
-}
 
 void blinkLED(uint8_t nbBlink, uint8_t duration){
   // duration en seconde
@@ -450,20 +330,20 @@ void displayDataSent(){
   Serial.println("*******************************************************");
   Serial.println("Data send to the ESP");
   Serial.print("Rain 24h : ");
-  Serial.println(rain24h.value);
+
   Serial.print("Rain 27d : ");
-  Serial.println(rain7d.value);
+
   Serial.print("Wind direction : ");
-  Serial.println(windDir.value);
+
   Serial.print("Wind Speed : ");
-  Serial.println(windSpeed.value);
+
   Serial.print("Temperature : ");
-  Serial.println(temperature.value);
+
   Serial.print("Humidity : ");
-  Serial.println(humidity.value);
+
   Serial.print("Pression : ");
-  Serial.println(pressure.value);
+
   Serial.print("Voltage battery : ");
-  Serial.println(batteryVoltage.value);
+
   Serial.println("");
 }
