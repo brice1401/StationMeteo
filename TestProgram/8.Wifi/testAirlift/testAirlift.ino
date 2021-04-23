@@ -3,14 +3,24 @@
  * Programme to test the airlift ESP32 co processor
  */
 
-#define SPIWIFI SPI // The SPI port
-#define SPIWIFI_SS 13 // Chip select pin
-#define ESP32_RESETN 12 // Reset pin
-#define SPIWIFI_ACK 11 // a.k.a BUSY or READY pin
-#define ESP32_GPIO0 -1
+#include "AdafruitIO_WiFi.h"
+#include "config.h"
 
 void setup() {
   // put your setup code here, to run once:
+
+    // Enable the serial port so we can see updates
+  Serial.begin(115200);
+ 
+  // Connect to Adafruit IO
+  io.connect();
+ 
+  // wait for a connection
+  while(io.status() < AIO_CONNECTED) 
+  {
+    Serial.print(".");
+    delay(500);
+  }
 
 }
 
