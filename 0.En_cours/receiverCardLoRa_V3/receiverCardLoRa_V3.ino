@@ -8,7 +8,7 @@
 // for debugging
 #define debug true
 uint8_t comptLoop = 0;
-#define SDdeMerde false 
+#define SDdeMerde false
 #define sommeil true
 
 #include <RH_RF95.h>
@@ -81,7 +81,7 @@ void setup() {
     // wait for serial bus to be active (M0)
     delay(1);
   }
-  
+
   byte errorSetup = 0; // to stop the setup if something wrong happen
 
   //init the rtc
@@ -165,7 +165,7 @@ void loop() {
   instant = rtc.now();
 
   if ((DurationLastSend(UnixTimeLastRadio, instant) >= (MinuteBetweenSend - 1))  || (waitMessage)) {
-    
+
     // the radio is waiting for a message 1 min before it will be send
     waitMessage = true;
 
@@ -219,11 +219,11 @@ void loop() {
         writeDataSD(Filename, maStationMeteo, instant);
 #endif
 
-        
+
         // change the instant of last sent
         UnixTimeLastRadio = getUnixTimeM(instant);
         waitMessage = false;
-        
+
 
 #if debug
         // display the data inside the WeatherStation object
@@ -247,7 +247,7 @@ void loop() {
   lcdNoShow();
   // put the feather to sleep for 8 sec
   int sleepMS = Watchdog.sleep();
-  
+
 #if defined(USBCON) && !defined(USE_TINYUSB)
   // reattach the USB connexion
   USBDevice.attach();
@@ -258,9 +258,9 @@ void loop() {
     delay(1);
   }
 #endif
-  
+
   Serial.println("The feaher has woken up");
-  
+
 #endif
 
 }
@@ -295,7 +295,7 @@ float measureBatteryVoltage() {
 void blinkLED(uint8_t nbBlink, uint8_t duration){
   // duration en seconde
   uint8_t delayDuration = uint8_t(duration * 1000 / (2 * nbBlink));
-  
+
   for(int j=0; j<nbBlink; j++){
     digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
     delay(delayDuration);
@@ -331,7 +331,7 @@ void displayDataSent(){
   Serial.println("Data send to the ESP");
   Serial.print("Rain 24h : ");
 
-  Serial.print("Rain 27d : ");
+  Serial.print("Rain 7d : ");
 
   Serial.print("Wind direction : ");
 
