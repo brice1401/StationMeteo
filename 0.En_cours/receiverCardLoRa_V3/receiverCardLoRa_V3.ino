@@ -206,6 +206,7 @@ void loop() {
         maStationMeteo.decodingMessage();
 
         // calculate the temp index
+        maStationMeteo.averageTemp();
         maStationMeteo.calculateIndex();
 
         // Add the rain to the data

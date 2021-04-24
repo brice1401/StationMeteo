@@ -25,7 +25,7 @@ int comptLoop = 0;
 //Definition des Pins des capteurs
 #define pinWindSpeed 12
 #define pinRain 11
-#define pinDHT22 18 
+#define pinDHT22 18
 #define pinWindDir 19
 #define pinBatteryVoltage 9
 
@@ -93,9 +93,9 @@ void setup()
     // wait for serial bus to be active (M0)
     delay(1);
   }
-  
+
   LastDisplay = millis();
-  
+
   // init serial com and Led to show the start of the code
   Serial.println("debut du code");
   pinMode(LED_BUILTIN, OUTPUT);
@@ -113,7 +113,7 @@ void setup()
   WindSpeedClick = 0;
   RainClick = 0;
   LastWindCheck = 0;
-  
+
   //Interrupt for wind speed
   attachInterrupt(digitalPinToInterrupt(pinRain), interruptRainGauge, FALLING);
   interrupts(); //turn on the interrrupt for rain
@@ -121,14 +121,14 @@ void setup()
   // Init the sensor and I2C devices
 
   byte errorSensor = 0;
-  
+
   //init DHT
   dht.begin();
   Serial.println("DHT OK");
-  
+
   //Serial.print("Free RAM : ");
   //Serial.println(FreeRam());
-  
+
   //init the BMP
   if (!bmp.begin()) {
     Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
@@ -143,7 +143,7 @@ void setup()
                   Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                   Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
-                  
+
 
   // init the RTC
   // use to init the RTC module
@@ -163,14 +163,14 @@ void setup()
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
   }
 
-  
+
   if(errorSensor == 1){
     // Stop the programme
     Serial.println("There is (at least) one error with the sensor");
     Serial.println("The program has to stop");
     while(1);
   }
-  
+
   // init the radio
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
@@ -195,12 +195,12 @@ void setup()
     Serial.println("setFrequency failed");
     while (1);
   }
-  Serial.print("Set Freq to : "); 
+  Serial.print("Set Freq to : ");
   Serial.println(RF95_FREQ);
-  
+
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
   // The default transmitter power is 13dBm, using PA_BOOST.
-  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then 
+  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
   // you can set transmitter powers from 5 to 23 dBm:
   rf95.setTxPower(23, false);
 
@@ -235,7 +235,7 @@ float measureWindSpeed(){
   detachInterrupt(pinRain);
   attachInterrupt(pinWindSpeed, interruptWindSpeed, FALLING);
   interrupts();
-  
+
   WindSpeedClick = 0; //init the counter before counting
   while (millis() - startReading < durationReading) {} //counting during the defined duration
   endReading = millis();
@@ -318,13 +318,13 @@ int averageAnalogRead(int pinToRead, byte numberOfReadings){
 float measureBatteryVoltage(){
   /*
    * Return the voltage of the battery
-   */  
+   */
 
   float measuredvbat = averageAnalogRead(pinBatteryVoltage, 20); //read the battery voltage using 64 points of measure
   measuredvbat *= 2; // we divided by 2, so multiply back
   measuredvbat *= 3.3; // Multiply by 3.3V, our reference voltage
   measuredvbat /= 1024; // convert to voltage
-  
+
   return(measuredvbat);
 }
 
@@ -366,9 +366,9 @@ void loop(){
     loopLaunch = 0;
   }
 
-  
+
   // the description of the code is explained in the excel document
-  
+
   //look at the time :
   instant = rtc.now();
 
@@ -381,31 +381,31 @@ void loop(){
   comptLoop = (comptLoop + 1) % 60;
   delay(1000);
 #endif
-  
+
   if(DurationLastSend(UnixTimeLastRadio, instant) >= MinuteBetweenSend){ //pour mesures toutes les minutes
 
   Serial.println("It's time to do the measures !");
-  
+
     //the last message was send MinuteBetweenSend minutes ago
     //it's time to measure and to send a new message
 
     // check the wind speed
     maStationMeteo.setWindSpeed(measureWindSpeed());
-    
+
     // measure the direction of the wind
     maStationMeteo.setWindDir(measureWindDir(50)); //measure direction of wind using 127 point of measure
-    
+
     //measure T° and %H with DHT22
     maStationMeteo.setTempDHT(dht.readTemperature());
     maStationMeteo.setHumidity(dht.readHumidity());
-    
+
     //measure pressure, temp et altitude with BMP280
     maStationMeteo.setTempBMP(bmp.readTemperature());
     maStationMeteo.setPressure((bmp.readPressure()/100) + 22); // pressure in hPa
-    
+
     //measure voltage of the battery
     maStationMeteo.setBatteryVoltage(measureBatteryVoltage());
-    
+
     //add the Temp of the RTC to the data
     maStationMeteo.setTempRTC(rtc.getTemperature());
 
@@ -414,8 +414,8 @@ void loop(){
 
     //element for the radio
     maStationMeteo.codingMessage();
-    
-#if debug 
+
+#if debug
       // display the value of the sensor in the class
       displayDataSerial(maStationMeteo, instant);
 #endif
@@ -429,19 +429,19 @@ void loop(){
     Serial.println("Sending data");
     rf95.send(maStationMeteo._radioBuffer, sizeof(maStationMeteo._radioBuffer));
     Serial.println("Data send");
-    
+
     // Now wait for a reply
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
-  
+
     Serial.println("Waiting for reply...");
-    if (rf95.waitAvailableTimeout(1000)){ 
-      // Should be a reply message for us now   
+    if (rf95.waitAvailableTimeout(1000)){
+      // Should be a reply message for us now
       if (rf95.recv(buf, &len)){
         Serial.print("Got reply: ");
         Serial.println((char*)buf);
         Serial.print("RSSI : ");
-        Serial.println(rf95.lastRssi(), DEC);    
+        Serial.println(rf95.lastRssi(), DEC);
       }
       else{
         Serial.println("Receive failed");
@@ -482,7 +482,7 @@ void loop(){
 void blinkLED(uint8_t nbBlink, uint8_t duration){
   // duration en seconde
   uint8_t delayDuration = uint8_t(duration * 1000 / (2 * nbBlink));
-  
+
   for(int j=0; j<nbBlink; j++){
     digitalWrite(LED_BUILTIN, HIGH); // turn off the LED
     delay(delayDuration);
