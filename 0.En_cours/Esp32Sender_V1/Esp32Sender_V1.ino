@@ -6,4 +6,12 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
+
+  // read the data on the SD Card
+
+
+  // send the data to adafruit IO
+
+  //dodo
+
 }
